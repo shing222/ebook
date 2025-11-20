@@ -98,8 +98,11 @@
 
         /* Tree 區塊：父節點有背景，葉節點無 icon、靠 JS 計算縮排 */
 
+        /* Tree：父節點有底色、葉節點無 icon，縮排 + 樹線由 JS 控制 */
+
         .tree {
             padding: 8px 0;
+            --tree-line: #e2e8f0;
         }
 
         .tree-list {
@@ -122,7 +125,7 @@
             border-radius: 6px;
             font-weight: 600;
             color: var(--accent-strong);
-            /* 預設先給一點縮排，之後由 JS 覆寫 padding-left */
+            /* 預設值，實際會被 JS 覆寫 */
             padding-left: 24px;
             user-select: none;
             transition: .15s;
@@ -145,21 +148,21 @@
 
                 .tree-group-row .tree-toggle span {
                     line-height: 1;
-                    font-size: 14px
+                    font-size: 14px;
                 }
 
                 .tree-group-row .tree-toggle:hover {
                     background: rgba(0,0,0,.05);
-                    color: var(--accent)
+                    color: var(--accent);
                 }
 
             .tree-group-row .tree-label {
                 flex: 1 1 auto;
-                min-width: 0
+                min-width: 0;
             }
 
             .tree-group-row:hover {
-                background: rgba(0,123,255,.08)
+                background: rgba(0,123,255,.08);
             }
 
         .tree-leaves {
@@ -182,11 +185,9 @@
             cursor: pointer;
             text-align: left;
             transition: .2s;
-            /* 預設 padding-left 先給 24，之後由 JS 覆寫 */
-            padding: 12px 14px 12px 24px;
+            /* 預設值，實際會被 JS 覆寫 */
+            padding: 12px 14px 12px 40px;
         }
-
-            /* 套在 .menu 裡一樣生效，不再另外寫 .menu button.tree-leaf */
 
             .tree-leaf .tree-label {
                 flex: 1 1 auto;
@@ -221,27 +222,35 @@
                 box-shadow: 0 0 0 3px rgba(0,123,255,.25);
             }
 
-    /* Tree 樹線 */
-    .tree-group-row::before,
-    .tree-leaf::before{
-        content:'';
-        position:absolute;
-        top:0;
-        bottom:0;
-        left:calc(24px + (var(--depth,1)-1) * var(--tree-indent));
-        border-left:1px solid var(--tree-line);
-        pointer-events:none;
-    }
-    .tree-leaf::after{
-        content:'';
-        position:absolute;
-        top:50%;
-        left:calc(24px + (var(--depth,1)-1) * var(--tree-indent));
-        width:18px;
-        border-top:1px solid var(--tree-line);
-        transform:translateY(-50%);
-        pointer-events:none;
-    }
+            /* === 樹線：垂直主幹 + 葉節點橫線 === */
+
+            .tree-group-row::before,
+            .tree-leaf::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: var(--line-x,16px); /* JS 會塞進來 */
+                border-left: 1px solid var(--tree-line);
+                pointer-events: none;
+            }
+
+            .tree-leaf::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: var(--line-x,16px);
+                width: 14px;
+                border-top: 1px solid var(--tree-line);
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+
+            .tree-leaf.active::before,
+            .tree-leaf.active::after {
+                border-color: var(--accent);
+            }
+
         .tree-tools {
             display: flex;
             gap: 6px;
@@ -267,6 +276,7 @@
                 border-color: var(--accent);
                 color: var(--accent-strong);
             }
+
 
     /* 葉節點：在 menu 內強制縮排（覆蓋 .menu button 的 padding） */
     .menu button.tree-leaf{
@@ -318,27 +328,6 @@
 
             /* 影片本體：用原始尺寸，必要時才縮到不超出容器 */
             .page.video-mode .page-media {
-    .pdfjs-viewer{display:flex;flex-direction:column;gap:8px;width:100%}
-    .pdfjs-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-    .pdfjs-btn{appearance:none;border:1px solid var(--edge);background:#fff;color:var(--accent-strong);border-radius:4px;padding:4px 12px;font-size:13px;cursor:pointer;transition:.15s}
-    .pdfjs-btn:disabled{opacity:.45;cursor:not-allowed}
-    .pdfjs-btn:not(:disabled):hover{background:var(--bg);border-color:var(--accent)}
-    .pdfjs-status{font-size:12px;color:var(--muted);min-width:5ch;text-align:center}
-    .pdfjs-canvas{width:100%!important;height:auto!important;max-width:100%;}
-    .pdfjs-viewer{display:flex;flex-direction:column;gap:8px;width:100%}
-
-    .pdfjs-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-
-    .pdfjs-btn{appearance:none;border:1px solid var(--edge);background:#fff;color:var(--accent-strong);border-radius:4px;padding:4px 12px;font-size:13px;cursor:pointer;transition:.15s}
-
-    .pdfjs-btn:disabled{opacity:.45;cursor:not-allowed}
-
-    .pdfjs-btn:not(:disabled):hover{background:var(--bg);border-color:var(--accent)}
-
-    .pdfjs-status{font-size:12px;color:var(--muted);min-width:5ch;text-align:center}
-
-    .pdfjs-canvas{width:100%!important;height:auto!important;max-width:100%;}
-
                 width: auto;
                 height: auto;
                 max-width: 100%;
@@ -586,9 +575,13 @@ body.theme-light .page-placeholder{
     </div>
 
     <!-- 外部會將 __MANIFEST__ 替換為實際資料 -->
-    <script id="manifest" type="application/json">{"title":"1120","pdfMode":"Native","items":[{"id":"0de1ecce69fe4c45b9490a8345ff1e8c","title":"S__30744648","breadcrumbs":["S__30744648"],"type":"Image","src":"assets/S__30744648.jpg","page":1,"poster":null,"sortOrder":0},{"id":"0c0d3a07d14545f48f2e51ab0811a503","title":"783230535.057630","breadcrumbs":["783230535.057630"],"type":"Video","src":"assets/783230535.057630.mp4","page":1,"poster":null,"sortOrder":1},{"id":"6f4ab4bc8d124cbda79b06f904fbab22","title":"115\u5B78\u5E74\u5EA6\u7C21\u7AE0","breadcrumbs":["115\u5B78\u5E74\u5EA6\u7C21\u7AE0"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_1.pdf","page":1,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_1.png","sortOrder":2},{"id":"68e078e176ea4cbba7b9626999d483dd","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C1\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C1\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0001.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0001.png","sortOrder":3},{"id":"7acc89d6532747e1af6338916d7ff954","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C2\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C2\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0002.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0002.png","sortOrder":4},{"id":"194f7fe8b6b64ea69608bf19b3c30263","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C3\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C3\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0003.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0003.png","sortOrder":5},{"id":"4f2f0007e5b84effbdd9b769ef8e2ae2","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C4\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C4\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0004.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0004.png","sortOrder":6},{"id":"aaabd2e2dab4446f898d68b531122dc0","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C5\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C5\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0005.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0005.png","sortOrder":7},{"id":"739ab420531d4a5fb92ce2e7c9862127","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C6\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C6\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0006.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0006.png","sortOrder":8},{"id":"dd42bce9fe704d1191e043a4d825fcf5","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C7\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C7\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0007.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0007.png","sortOrder":9}]}</script>
+    <script id="manifest" type="application/json">{"title":"\u6E2C\u8A66","pdfMode":"Native","items":[{"id":"5c58639ac5824c1a8c9abee2cba3be8f","title":"S__30744648","breadcrumbs":["S__30744648"],"type":"Image","src":"assets/S__30744648.jpg","page":1,"poster":null,"sortOrder":0},{"id":"bda95d4975bf47d5bfc1ac2b111065c0","title":"783230535.057630","breadcrumbs":["783230535.057630"],"type":"Video","src":"assets/783230535.057630.mp4","page":1,"poster":null,"sortOrder":1},{"id":"79fa6b3a04604c69bf8afdf27bf3940b","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C1\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C1\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0001.pdf","page":1,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0001.png","sortOrder":2},{"id":"393cc04c360e40e9abc2f96df6b9642b","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C2\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C2\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0002.pdf","page":2,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0002.png","sortOrder":3},{"id":"74caad7bc90445d38fcaa76311b49a40","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C3\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C3\u9801"],"type":"Pdf","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0003.pdf","page":3,"poster":"assets/thumb_\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0003.png","sortOrder":4},{"id":"7b8e47c6e386445892d446b62107120a","title":"115\u5B78\u5E74\u5EA6\u7C21\u7AE0","breadcrumbs":["115\u5B78\u5E74\u5EA6\u7C21\u7AE0"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0.pdf","page":1,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0.png","sortOrder":5},{"id":"61466d6549474ed9a7081b9dfeb05f6a","title":"image-export-test","breadcrumbs":["image-export-test"],"type":"Html","src":"assets/dadf12c9-b1ae-4524-8f61-807379dedf6f.html","page":1,"poster":"assets/thumb_dadf12c9-b1ae-4524-8f61-807379dedf6f.png","sortOrder":6},{"id":"2988c2d55fc1487789d1373693b60ac2","title":"markdown-html-test","breadcrumbs":["markdown-html-test"],"type":"Html","src":"assets/9e60bc01-2219-4982-8507-fb9dc9d62517.html","page":1,"poster":"assets/thumb_9e60bc01-2219-4982-8507-fb9dc9d62517.png","sortOrder":7},{"id":"efa87bbdf10041468457e273b4434782","title":"1140115\u4E2D\u5B78\u751F\u512A\u5316\u6703\u8B70\u8A0E\u8AD6\u9805\u76EE","breadcrumbs":["1140115\u4E2D\u5B78\u751F\u512A\u5316\u6703\u8B70\u8A0E\u8AD6\u9805\u76EE"],"type":"Html","src":"assets/89968532-aba4-485b-a254-7f23e2460b7a.html","page":1,"poster":"assets/thumb_89968532-aba4-485b-a254-7f23e2460b7a.png","sortOrder":8}]}</script>
 
     <script>
+        const TREE_INDENT = 18;
+        const TREE_LINE_BASE = 16;
+        const TREE_PARENT_BASE = 24;
+        const TREE_LEAF_BASE = 40;
         const byId = id => document.getElementById(id);
         let manifestRaw = '';
         const manifestNode = byId('manifest');
@@ -600,7 +593,7 @@ body.theme-light .page-placeholder{
             manifest = JSON.parse(manifestRaw || '{}');
         } catch (err) {
             console.warn('manifest 解析失敗，將改讀 manifest.json', err);
-            manifest = { title: '', pdfMode: 'native', items: [] };
+            manifest = { title: '', items: [] };
         }
         const TITLE_DELIMITER = '::';
         const TITLE_JOIN = ' :: ';
@@ -645,7 +638,6 @@ body.theme-light .page-placeholder{
         }
 
         const state = {
-            pdfMode: (manifest.pdfMode || 'native').toLowerCase(),
             items: normalizeItems(manifest.items),
             active: null, viewMode: 'list'
         };
@@ -657,6 +649,10 @@ body.theme-light .page-placeholder{
             treeState.expanded.clear();
         }
 
+
+        function rebuildTreeExpansion() {
+            treeState.expanded.clear();
+        }
         rebuildTreeExpansion();
 
         async function ensureItemsLoaded() {
@@ -709,8 +705,8 @@ body.theme-light .page-placeholder{
             }
         }
 
-        function currentIndex() { return state.active ? state.items.findIndex(x => x.id === state.active.id) : -1 }
-        function totalPages() { return state.items.length }
+        function currentIndex() { return state.active && Array.isArray(state.items) ? state.items.findIndex(x => x.id === state.active.id) : -1 }
+        function totalPages() { return Array.isArray(state.items) && state.items.length ? state.items.length : (Array.isArray(manifest.items) ? manifest.items.length : 0) }
         function setIndex(i, fromUser = false) {
             const t = totalPages(); if (!t) return;
             const n = Math.min(t - 1, Math.max(0, i | 0));
@@ -726,13 +722,15 @@ body.theme-light .page-placeholder{
         const goNext = () => { const i = currentIndex(); if (i < totalPages() - 1) setIndex(i + 1, true); }
         const goLast = () => setIndex(totalPages() - 1, true);
         function goToInput() { const v = Number(pageInput.value); if (!v || v < 1) return; setIndex(v - 1, true) }
-        function updateBookPagerUI() {
+                function updateBookPagerUI() {
             const t = totalPages(), i = currentIndex();
-            pageTotal.textContent = '/ ' + (t || '—');
-            pageInput.value = (i >= 0 ? (i + 1) : '');
-            btnFirst.disabled = btnPrev.disabled = (i <= 0);
-            btnNext.disabled = btnLast.disabled = (i < 0 || i >= t - 1);
-            pageStatus.textContent = (i >= 0 ? `第 ${i + 1} / ${t} 頁` : '第 — / — 頁');
+            const hasPages = t > 0;
+            const displayIndex = (i >= 0 ? i : hasPages ? 0 : -1);
+            pageTotal.textContent = '/ ' + (hasPages ? t : '—');
+            pageInput.value = (displayIndex >= 0 ? (displayIndex + 1) : '');
+            btnFirst.disabled = btnPrev.disabled = (displayIndex <= 0);
+            btnNext.disabled = btnLast.disabled = (!hasPages || displayIndex >= t - 1);
+            pageStatus.textContent = (displayIndex >= 0 ? `第 ${displayIndex + 1} / ${t} 頁` : '第 — / — 頁');
         }
 
         function filterItems(keyword) {
@@ -796,9 +794,13 @@ body.theme-light .page-placeholder{
                     const row = document.createElement('div');
                     row.className = 'tree-group-row';
 
-                    // 父節點縮排：基準 24px + 每層多 16px
-                    const parentIndent = 24 + (level - 1) * 16;
+                    // 父節點縮排
+                    const parentIndent = TREE_PARENT_BASE + (level - 1) * TREE_INDENT;
                     row.style.paddingLeft = parentIndent + 'px';
+
+                    // 樹線 x 位置
+                    const lineX = TREE_LINE_BASE + (level - 1) * TREE_INDENT;
+                    row.style.setProperty('--line-x', lineX + 'px');
 
                     const toggle = document.createElement('button');
                     toggle.type = 'button';
@@ -849,8 +851,9 @@ body.theme-light .page-placeholder{
                 } else if (items.length) {
                     const leaves = document.createElement('ul');
                     leaves.className = 'tree-list tree-leaves';
+                    const levelForLeaf = pathSegments.length || 1;
                     items.forEach(item => {
-                        leaves.appendChild(createLeafNode(item, level || 1));
+                        leaves.appendChild(createLeafNode(item, levelForLeaf));
                     });
                     li.appendChild(leaves);
                 }
@@ -862,6 +865,7 @@ body.theme-light .page-placeholder{
         }
 
 
+
         function createLeafNode(item, depth) {
             const li = document.createElement('li');
             const btn = document.createElement('button');
@@ -871,10 +875,13 @@ body.theme-light .page-placeholder{
 
             const level = Math.max(1, depth || 1);
 
-            // 葉節點縮排：基準 40px + 每層多 16px
-            // 例：level=2 → 40 + (2-1)*16 = 56px，比父節點明顯往右
-            const leafIndent = 40 + (level - 1) * 16;
+            // 葉節點縮排：比父節點更往右
+            const leafIndent = TREE_LEAF_BASE + (level - 1) * TREE_INDENT;
             btn.style.paddingLeft = leafIndent + 'px';
+
+            // 葉節點樹線 x：與父節點同一條「主幹」，不要跟 padding 綁死
+            const lineX = TREE_LINE_BASE + (level - 1) * TREE_INDENT;
+            btn.style.setProperty('--line-x', lineX + 'px');
 
             const label = document.createElement('span');
             label.className = 'tree-label';
@@ -896,6 +903,7 @@ body.theme-light .page-placeholder{
             li.appendChild(btn);
             return li;
         }
+
 
 
         function renderSidebar() {
@@ -990,19 +998,17 @@ body.theme-light .page-placeholder{
                 const src = document.createElement('source'); src.src = item.src; src.type = guessMime(item.src);
                 video.appendChild(src); page.appendChild(video); video.play().catch(() => { });
             } else if (item.type === 'pdf') {
-                if (state.pdfMode === 'pdfjs') { renderPdfWithPdfJs(page, item.src, item.page || 1); }
-                else {
-                    const iframe = document.createElement('iframe');
-                    // ★ 移除 #page=...，只保留原始 src
-                    iframe.src = item.src;
-                    iframe.title = item.title;
-                    iframe.className = 'page-media';
-                    page.appendChild(iframe);
-                    //const iframe = document.createElement('iframe');
-                    //iframe.src = `${item.src}#page=${item.page || 1}&view=FitH`; iframe.title = item.title; iframe.className = 'page-media';
-                    //page.appendChild(iframe);
-                }
+                const iframe = document.createElement('iframe');
+                // �� ���� #page=...�A�u�O�d��l src
+                iframe.src = item.src;
+                iframe.title = item.title;
+                iframe.className = 'page-media';
+                page.appendChild(iframe);
+                //const iframe = document.createElement('iframe');
+                //iframe.src = `${item.src}#page=${item.page || 1}&view=FitH`; iframe.title = item.title; iframe.className = 'page-media';
+                //page.appendChild(iframe);
             } else if (item.type === 'html') {
+
                 const iframe = document.createElement('iframe');
                 iframe.title = item.title;
                 iframe.className = 'page-media';
@@ -1037,109 +1043,26 @@ body.theme-light .page-placeholder{
             fitPageToViewer(); applyZoom();
         }
 
-        function guessMime(url) {
+        
+        function getPageElement() { return viewer.querySelector('.page'); }
+        function calcFitWidth() {
+            if (!viewer) return 0;
+            const style = window.getComputedStyle(viewer);
+            const padX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+            const available = Math.max(1, viewer.clientWidth - padX);
+            const page = getPageElement();
+            if (!page) return available;
+            const pageStyle = window.getComputedStyle(page);
+            const innerPad = (parseFloat(pageStyle.paddingLeft) || 0) + (parseFloat(pageStyle.paddingRight) || 0);
+            return Math.max(1, available - innerPad);
+        }
+function guessMime(url) {
             const ext = (url.split('.').pop() || '').toLowerCase();
             if (ext === 'mp4') return 'video/mp4';
             if (ext === 'webm') return 'video/webm';
             if (ext === 'ogg' || ext === 'ogv') return 'video/ogg';
             return 'video/mp4';
         }
-
-        async function renderPdfWithPdfJs(host, url, pageNo) {
-            if (!window.pdfjsLib) {
-                await loadScript('pdfjs/pdf.min.js');
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs/pdf.worker.min.js';
-            }
-
-            host.innerHTML = '';
-            const message = document.createElement('div');
-            message.className = 'page-placeholder';
-            message.textContent = '載入 PDF 中…';
-            host.appendChild(message);
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'pdfjs-viewer';
-            const controls = document.createElement('div');
-            controls.className = 'pdfjs-controls';
-            const prevBtn = document.createElement('button');
-            prevBtn.type = 'button';
-            prevBtn.className = 'pdfjs-btn';
-            prevBtn.textContent = '上一頁';
-            const status = document.createElement('span');
-            status.className = 'pdfjs-status';
-            const nextBtn = document.createElement('button');
-            nextBtn.type = 'button';
-            nextBtn.className = 'pdfjs-btn';
-            nextBtn.textContent = '下一頁';
-            controls.append(prevBtn, status, nextBtn);
-            const canvas = document.createElement('canvas');
-            canvas.className = 'page-media pdfjs-canvas';
-            wrapper.append(controls, canvas);
-            host.appendChild(wrapper);
-            const ctx = canvas.getContext('2d');
-            const showMessage = (text) => {
-                message.textContent = text;
-                message.hidden = false;
-            };
-            const hideMessage = () => {
-                message.hidden = true;
-            };
-            try {
-                const pdf = await pdfjsLib.getDocument(url).promise;
-                const total = pdf.numPages || 1;
-                const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-                let current = clamp(pageNo || 1, 1, total);
-                const updateControls = () => {
-                    status.textContent = `${current} / ${total}`;
-                    prevBtn.disabled = current <= 1;
-                    nextBtn.disabled = current >= total;
-                };
-                const renderPage = async (target) => {
-                    current = target;
-                    updateControls();
-                    showMessage('頁面載入中…');
-                    const page = await pdf.getPage(current);
-                    const viewport = page.getViewport({ scale: 1.5 });
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    await page.render({ canvasContext: ctx, viewport }).promise;
-                    hideMessage();
-                };
-                prevBtn.addEventListener('click', () => {
-                    if (current > 1) {
-                        renderPage(current - 1);
-                    }
-                });
-                nextBtn.addEventListener('click', () => {
-                    if (current < total) {
-                        renderPage(current + 1);
-                    }
-                });
-                updateControls();
-                await renderPage(current);
-            } catch (err) {
-                host.innerHTML = '';
-                const fb = document.createElement('div');
-                fb.className = 'page-placeholder';
-                fb.textContent = `PDF 載入失敗：${err.message}`;
-                host.appendChild(fb);
-            }
-        }
-
-
-
-        function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('無法載入 ' + src)); document.head.appendChild(s); }); }
-
-        /* ===== 尺寸 & 縮放 ===== */
-        function getPageElement() { return viewer.querySelector('.page') }
-
-        function calcFitWidth() {
-            const pageBorderWidth = 2;
-            const vw = viewer.clientWidth;
-            const baseWidth = vw;
-            return baseWidth - pageBorderWidth;
-        }
-
         function applyZoom() {
             const page = getPageElement();
             if (!page) return;
@@ -1457,6 +1380,7 @@ body.theme-light .page-placeholder{
                 if (gridItem) setTimeout(() => scrollToTopAnywhere('smooth'), 0);
             });
         })();
+
         const btnExpandAll = byId('treeExpandAll');
         const btnCollapseAll = byId('treeCollapseAll');
 
@@ -1486,115 +1410,11 @@ body.theme-light .page-placeholder{
                 renderSidebar();
             });
         }
-
-        // ========= 縮圖模式：滑過顯示大圖預覽 =========
-        (function () {
-            const grid = document.getElementById('menu-grid');
-            if (!grid) return; // 保險
-
-            // 動態建立預覽容器
-            const preview = document.createElement('div');
-            preview.id = 'thumb-preview';
-            Object.assign(preview.style, {
-                position: 'fixed',
-                zIndex: '2147483000',
-                pointerEvents: 'none',
-                padding: '4px',
-                background: '#fff',
-                border: '1px solid #ccc',
-                borderRadius: '6px',
-                boxShadow: '0 4px 16px rgba(0,0,0,.2)',
-                display: 'none',
-                maxWidth: '400px',
-                maxHeight: '400px'
-            });
-
-            const img = document.createElement('img');
-            img.id = 'thumb-preview-img';
-            Object.assign(img.style, {
-                display: 'block',
-                maxWidth: '100%',
-                maxHeight: '100%'
-            });
-
-            preview.appendChild(img);
-            document.body.appendChild(preview);
-
-            const OFFSET = 20;
-
-            function showPreview(e, src) {
-                img.src = src;
-                preview.style.display = 'block';
-                movePreview(e);
-            }
-
-            function hidePreview() {
-                preview.style.display = 'none';
-                img.src = '';
-            }
-
-            function movePreview(e) {
-                const vw = window.innerWidth;
-                const vh = window.innerHeight;
-                const rect = preview.getBoundingClientRect();
-
-                let x = e.clientX + OFFSET;
-                let y = e.clientY + OFFSET;
-
-                if (x + rect.width > vw) {
-                    x = e.clientX - OFFSET - rect.width;
-                }
-                if (y + rect.height > vh) {
-                    y = e.clientY - OFFSET - rect.height;
-                }
-
-                preview.style.left = x + 'px';
-                preview.style.top = y + 'px';
-            }
-
-            function getItemFromEvent(e) {
-                const itemEl = e.target.closest('.grid-item');
-                if (!itemEl) return null;
-                const id = itemEl.dataset.id;
-                if (!id) return null;
-                return state.items.find(x => x.id === id) || null;
-            }
-
-            // 移動時更新預覽位置
-            grid.addEventListener('mousemove', function (e) {
-                if (preview.style.display === 'block') {
-                    movePreview(e);
-                }
-            });
-
-            // 移入某個縮圖，決定要不要顯示預覽
-            grid.addEventListener('mouseover', function (e) {
-                const item = getItemFromEvent(e);
-                if (!item) return;
-
-                // 只對圖片型別開預覽；若要包含影片 poster，可放寬條件
-                if (item.type !== 'image') return;
-
-                const imgSrc =
-                    item.thumbnail ||
-                    (item.type === 'image' ? item.src : null);
-
-                if (!imgSrc) return;
-
-                showPreview(e, imgSrc);
-            });
-
-            // 整個縮圖區離開時關閉預覽
-            grid.addEventListener('mouseleave', function () {
-                hidePreview();
-            });
-        })();
         // ========= 縮圖模式：滑過顯示大圖預覽（DOM 版，完全不依賴 state） =========
         (function () {
             const grid = document.getElementById('menu-grid');
             if (!grid) return;
 
-            // 動態建立預覽容器
             const preview = document.createElement('div');
             preview.id = 'thumb-preview';
             Object.assign(preview.style, {
@@ -1639,7 +1459,6 @@ body.theme-light .page-placeholder{
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
 
-                // 先暫時顯示，以便取得尺寸
                 const prevDisplay = preview.style.display;
                 if (prevDisplay === 'none') {
                     preview.style.display = 'block';
@@ -1663,7 +1482,6 @@ body.theme-light .page-placeholder{
                 preview.style.top = y + 'px';
             }
 
-            // 從事件目標往上找 .grid-item，再找其中的 <img>
             function getImageSrcFromEvent(e) {
                 const itemEl = e.target.closest('.grid-item');
                 if (!itemEl) return null;
@@ -1671,29 +1489,31 @@ body.theme-light .page-placeholder{
                 const imgEl = itemEl.querySelector('.grid-thumb img');
                 if (imgEl && imgEl.src) return imgEl.src;
 
-                // 若未來有用 background-image 的情況，可在這邊加額外解析
                 return null;
             }
 
-            // 移動時更新預覽位置
+            // 滑動時只負責更新位置
             grid.addEventListener('mousemove', function (e) {
                 if (preview.style.display === 'block') {
                     movePreview(e);
                 }
             });
 
-            // 移入某個縮圖，決定要不要顯示預覽
+            // 關鍵修改：沒有縮圖時要清掉預覽，不保留上一張
             grid.addEventListener('mouseover', function (e) {
                 const src = getImageSrcFromEvent(e);
-                if (!src) return;
+                if (!src) {
+                    hidePreview();
+                    return;
+                }
                 showPreview(e, src);
             });
 
-            // 整個縮圖區離開時關閉預覽
             grid.addEventListener('mouseleave', function () {
                 hidePreview();
             });
         })();
+
         (function () {
             const splitter = document.getElementById('sidebar-splitter');
             const sidebar = document.querySelector('.sidebar');
@@ -1760,6 +1580,7 @@ body.theme-light .page-placeholder{
 
             splitter.addEventListener('mousedown', onMouseDown);
         })();
+
     </script>
     <!-- ====================== 新增結束 ====================== -->
 </body>

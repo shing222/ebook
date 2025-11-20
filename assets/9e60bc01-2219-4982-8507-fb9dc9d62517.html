@@ -1,0 +1,212 @@
+﻿<style>
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.7; color: #333; background-color: #fff; margin: 0; padding: 2rem; }
+    .markdown-body { max-width: 800px; margin: 0 auto; }
+    h1, h2, h3, h4, h5, h6 { margin-top: 2em; margin-bottom: 1em; font-weight: 600; line-height: 1.25; }
+    p { margin-bottom: 1em; }
+    img { max-width: 100%; height: auto; display: block; margin: 1em 0; border-radius: 8px; }
+    pre { background-color: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 0.9em; }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; }
+    blockquote { border-left: 4px solid #dfe2e5; padding-left: 1em; color: #6a737d; margin-left: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    th, td { border: 1px solid #dfe2e5; padding: 8px 12px; }
+    th { background-color: #f6f8fa; font-weight: 600; }
+    ul, ol { padding-left: 2em; }
+
+
+</style>
+<body>
+    <div class="markdown-body">
+        <h1>Markdown → HTML 測試檔（Code + Images）</h1>
+<blockquote>
+<p>本檔案用來測試 <strong>Markdown 轉 HTML</strong> 的各種元素：標題、段落、連結、程式碼區塊、行內程式碼、圖片、表格、待辦清單、引用、腳註、以及少量 HTML。</p>
+</blockquote>
+<ul>
+<li>作者：Your Name</li>
+<li>版本：<code>v1.0.0</code></li>
+<li>生成時間：<code>{{ now }}</code> ← 這一段只是普通文字，非模板。</li>
+</ul>
+<hr>
+<h2>目錄</h2>
+<ol>
+<li><a href="#%E7%B0%A1%E4%BB%8B">簡介</a></li>
+<li><a href="#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B">快速開始</a></li>
+<li><a href="#%E5%9C%96%E7%89%87%E5%B1%95%E7%A4%BA">圖片展示</a></li>
+<li><a href="#%E7%A8%8B%E5%BC%8F%E7%A2%BC%E7%AF%84%E4%BE%8B">程式碼範例</a>
+<ul>
+<li><a href="#javascript">JavaScript</a></li>
+<li><a href="#python">Python</a></li>
+<li><a href="#c--aspnet-core">C# / ASP.NET Core</a></li>
+<li><a href="#html--css">HTML + CSS</a></li>
+<li><a href="#shell">Shell</a></li>
+<li><a href="#mermaid-%E5%9C%96%E8%A1%A8">Mermaid 圖表</a></li>
+</ul>
+</li>
+<li><a href="#%E8%A1%A8%E6%A0%BC%E8%88%87%E5%BE%85%E8%BE%A6">表格與待辦</a></li>
+<li><a href="#%E9%80%B2%E9%9A%8E%E5%85%A7%E5%B5%8C-html-%E8%88%87%E5%BC%95%E6%96%87">進階：內嵌 HTML 與引文</a></li>
+<li><a href="#%E9%99%84%E8%A8%BB%E8%88%87%E6%8E%88%E6%AC%8A">附註與授權</a></li>
+</ol>
+<hr>
+<h2>簡介</h2>
+<p>這是一份<strong>說明型</strong>的測試檔。在文字段落中，我們會穿插行內程式碼（例如 <code>Console.WriteLine(&quot;Hello&quot;);</code>）以及<strong>圖片</strong>，以模擬實際技術文件的樣貌。</p>
+<p>例如，下圖是一張隨機示意圖片（來源為 picsum），緊接在段落文字之中：<br>
+<img src="https://picsum.photos/seed/markdown-html/960/400" alt="範例圖片：介面預覽（隨機）" title="隨機寬960 × 高400 的測試圖"></p>
+<p>另外一張圖片使用<strong>參考式語法</strong>，並在段落末尾出現：請參見圖示 <a href="https://picsum.photos/seed/ui-figure/800/300" title="UI 構圖（參考式圖片）">介面構圖圖</a>。</p>
+<blockquote>
+<p>小提醒：有些轉換器對圖片的 lazy-loading、標題（title）屬性、或解析度縮放支援不同，請多加留意。</p>
+</blockquote>
+<hr>
+<h2>快速開始</h2>
+<ol>
+<li>下載此檔案並轉為 HTML。</li>
+<li>確認標題、段落、清單、表格、程式碼上色是否正確。</li>
+<li>檢查圖片是否能正常載入（外部 URL 與相對路徑）。</li>
+<li>驗證數學式（若轉換器支援 KaTeX/MathJax）：$E=mc^2$ 與
+$$
+\int_0^{2\pi}\sin(x),dx = 0
+$$</li>
+</ol>
+<blockquote>
+<p>提示：如果你的轉換器支援高亮主題，請切換深/淺色主題，檢查程式碼色彩與等寬字體。</p>
+</blockquote>
+<hr>
+<h2>圖片展示</h2>
+<p>連續段落搭配圖片測試：這裡描述系統架構概念，並於段落中插圖：</p>
+<p><img src="https://picsum.photos/seed/architecture/1024/360" alt="系統架構示意（隨機）" title="架構示意圖"></p>
+<p>接著說明部署拓撲，並在下方再貼一張圖片。請注意圖片之間的間距與對齊。</p>
+<p><img src="https://picsum.photos/seed/deploy-topology/900/320" alt="部署拓撲（隨機）" title="部署拓撲"></p>
+<p>有些情境會使用<strong>相對路徑</strong>圖片（例如專案目錄中的 <code>./assets/logo.png</code>）。若轉換器不處理靜態檔案，這張圖可能無法顯示：<br>
+<img src="logo_1.png" alt="相對路徑 Logo" title="專案 Logo（相對路徑範例）"></p>
+<hr>
+<h2>程式碼範例</h2>
+<h3>JavaScript</h3>
+<p>說明：以下程式碼示範基本事件監聽與 DOM 更新，並於段落中解釋其運作。</p>
+<pre><code class="language-javascript">// app.js
+document.addEventListener('DOMContentLoaded', () =&gt; {
+  const btn = document.querySelector('#helloBtn');
+  const output = document.querySelector('#output');
+
+  btn.addEventListener('click', () =&gt; {
+    const t = new Date().toLocaleString();
+    output.textContent = `Hello, Markdown → HTML! (${t})`;
+  });
+});
+</code></pre>
+<p>這段程式碼會在使用者點擊按鈕時，將目前時間寫入 <code>#output</code> 元素。</p>
+<h3>Python</h3>
+<p>以下展示一個簡單的 HTTP 伺服器範例，並在<strong>說明文字</strong>中描述參數與行為：</p>
+<pre><code class="language-python"># server.py
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+class MyHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == &quot;/healthz&quot;:
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b&quot;ok&quot;)
+        else:
+            super().do_GET()
+
+if __name__ == &quot;__main__&quot;:
+    HTTPServer((&quot;0.0.0.0&quot;, 8080), MyHandler).serve_forever()
+</code></pre>
+<p>啟動後，瀏覽 <code>http://localhost:8080/healthz</code> 應回應 <code>ok</code>。</p>
+<h3>C# / ASP.NET Core</h3>
+<p>範例展示 <strong>Minimal API</strong> 與 DI 註冊。注意 fenced code block 的語言標註為 <code>csharp</code> 以利著色：</p>
+<pre><code class="language-csharp">// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapGet(&quot;/api/hello&quot;, () =&gt; new { message = &quot;Hello, Markdown → HTML!&quot; });
+
+app.Run();
+</code></pre>
+<h3>HTML + CSS</h3>
+<p>同一段落先說明需求，然後給出 HTML/CSS 範例：</p>
+<pre><code class="language-html">&lt;!-- index.html --&gt;
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;zh-Hant&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;utf-8&quot; /&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot; /&gt;
+  &lt;title&gt;Markdown → HTML 測試&lt;/title&gt;
+  &lt;style&gt;
+    .hero { padding: 24px; border-radius: 12px; }
+    .btn { padding: 8px 14px; border: 1px solid #ccc; border-radius: 8px; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;main class=&quot;hero&quot;&gt;
+    &lt;h1&gt;轉檔測試頁&lt;/h1&gt;
+    &lt;p&gt;這段文字包含 &lt;code&gt;inline code&lt;/code&gt; 與 &lt;strong&gt;粗體&lt;/strong&gt;。&lt;/p&gt;
+    &lt;button id=&quot;helloBtn&quot; class=&quot;btn&quot;&gt;Say Hello&lt;/button&gt;
+    &lt;pre id=&quot;output&quot;&gt;待輸出…&lt;/pre&gt;
+    &lt;img src=&quot;https://picsum.photos/seed/inline-img/600/240&quot; alt=&quot;內嵌測試圖&quot;&gt;
+  &lt;/main&gt;
+  &lt;script src=&quot;./app.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<h3>Shell</h3>
+<p>最後給一段 Shell 指令，方便一鍵預覽：</p>
+<pre><code class="language-bash"># 以 Python 啟動一個簡單靜態伺服器
+python3 -m http.server 8080
+
+# 或使用 bun / node / dotnet 等工具依需求調整
+</code></pre>
+<h3>Mermaid 圖表</h3>
+<p>若轉換器支援 Mermaid，可直接渲染下列流程圖（不支援時應以程式碼區塊顯示）：</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[Markdown 檔] --&gt; B[轉換器]
+  B --&gt;|HTML| C[瀏覽器預覽]
+  C --&gt; D{效果符合預期?}
+  D --&gt;|Yes| E[完成]
+  D --&gt;|No| F[調整設定/樣式]
+</code></pre>
+<hr>
+<h2>表格與待辦</h2>
+<h3>表格</h3>
+<p>| 項目 | 說明 | 連結 |
+|---:|:---|:---|
+| 1 | 轉檔是否正確套用標題層級 | <a href="#markdown--html-%E6%B8%AC%E8%A9%A6%E6%AA%94code--images">H1~H6 測試</a> |
+| 2 | 程式碼高亮是否正確 | 參見各語言小節 |
+| 3 | 圖片載入與對齊 | 參見<a href="#%E5%9C%96%E7%89%87%E5%B1%95%E7%A4%BA">圖片展示</a> |
+| 4 | 特殊元素支援 | Mermaid / 數學式 / 內嵌 HTML |</p>
+<h3>待辦清單</h3>
+<ul>
+<li>[x] 基本結構（標題、段落、清單）</li>
+<li>[x] 程式碼區塊（JS/Python/C#/HTML/CSS/Shell/Mermaid）</li>
+<li>[x] 圖片（外部 URL / 相對路徑）</li>
+<li>[ ] 轉換器樣式客製化（CSS）</li>
+<li>[ ] 產生目錄自動連結</li>
+</ul>
+<hr>
+<h2>進階：內嵌 HTML 與引文</h2>
+<p>下面用 <code>&lt;details&gt;</code> 測試原生 HTML 通過：</p>
+<details>
+  <summary>展開以查看額外說明</summary>
+  <p>如果轉換器允許內嵌 HTML，這段文字應該能被正確渲染。</p>
+</details>
+<blockquote>
+<p>參考引文</p>
+<p>「好的技術文件讓讀者能在<strong>最短時間</strong>找到<strong>正確答案</strong>。」</p>
+</blockquote>
+<p>區塊引用之後再加一段普通文字，檢查間距與段落行高。</p>
+<hr>
+<h2>附註與授權</h2>
+<ul>
+<li>本檔案僅供測試；圖片來自隨機服務（picsum）。</li>
+<li>授權：MIT。</li>
+</ul>
+<p>腳註示範：這是一個腳註連結<a href="%E8%85%B3%E8%A8%BB%E5%85%A7%E5%AE%B9%EF%BC%9A%E8%8B%A5%E4%BD%A0%E7%9A%84%E8%BD%89%E6%8F%9B%E5%99%A8%E6%94%AF%E6%8F%B4%E8%85%B3%E8%A8%BB%E8%AA%9E%E6%B3%95%EF%BC%8C%E6%87%89%E5%9C%A8%E9%A0%81%E9%9D%A2%E5%BA%95%E9%83%A8%E9%A1%AF%E7%A4%BA%E3%80%82">^1</a>。</p>
+
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
