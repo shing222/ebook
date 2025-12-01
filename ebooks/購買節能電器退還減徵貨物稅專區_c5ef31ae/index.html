@@ -1,0 +1,648 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>翻頁書冊</title>
+    <link rel="stylesheet" href="./lib/pdfjs/viewer.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f8f9fa;
+            --panel: #fff;
+            --muted: #6c757d;
+            --text: #212529;
+            --accent: #007bff;
+            --accent-strong: #0056b3;
+            --focus: #007bff;
+            --edge: #dee2e6;
+            --edge-strong: #ced4da;
+            --paper: #fff;
+            font-family: "Segoe UI","Noto Sans TC",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            --font-display: "Noto Sans TC","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            --sidebar-width: 320px;
+            --splitter-width: 6px;
+        }
+        *{box-sizing:border-box} html,body{height:100%}
+        body{margin:0;min-height:100vh;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+        .app { display: grid; grid-template-columns: var(--sidebar-width) var(--splitter-width) minmax(0, 1fr); min-height: 100vh; height: 100vh; }
+        .splitter { cursor: col-resize; background: linear-gradient(to right, #e9ecef, #ced4da, #e9ecef); border-right: 1px solid var(--edge); }
+        .splitter:hover { cursor: ew-resize; cursor: col-resize; }
+        body.resizing-sidebar { user-select: none; cursor: ew-resize !important; cursor: col-resize !important; }
+        @media (max-width:960px) { .app { grid-template-columns: 1fr; } .splitter { display: none; } }
+        .sidebar{background:var(--panel);border-right:1px solid var(--edge);display:flex;flex-direction:column;position:sticky;top:0;align-self:start;height:100vh;overflow:hidden}
+        .sidehead{position:sticky;top:0;z-index:3;background:var(--panel);border-bottom:1px solid var(--edge)}
+        .brand{padding:16px 18px 6px;font-weight:700;letter-spacing:.06em;color:var(--accent-strong);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .brand #brand-title{font-family:var(--font-display,"Segoe UI","Noto Sans TC",system-ui,-apple-system,BlinkMacSystemFont,sans-serif)}
+        .pager{display:flex;align-items:center;gap:6px;padding:8px 12px 10px;border-bottom:1px solid var(--edge)}
+        .pbtn{appearance:none;border:1px solid var(--edge);background:#fff;color:var(--accent-strong);border-radius:6px;padding:6px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+        .pbtn svg{width:16px;height:16px}
+        .pbtn:hover{background:#f8f9fa;border-color:var(--accent)} .pbtn:active{transform:translateY(1px)}
+        .pbtn:disabled{opacity:.45;cursor:not-allowed}
+        .pnum{display:flex;align-items:center;gap:6px;margin-left:auto}
+        .pinput{width:7.5ch;padding:6px 8px;border-radius:6px;border:1px solid var(--edge);background:#fff;color:var(--text)}
+        .ptotal{font-size:12px;color:var(--muted);white-space:nowrap}
+        .search{padding:10px 12px 12px}
+        .search input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#fff;color:var(--text);transition:.2s}
+        .search input::placeholder{color:#6c757d}
+        .search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,255,.25)}
+        .menu{flex:1;overflow-y:auto;padding:0 12px 12px;scrollbar-width:thin;scrollbar-color:var(--edge-strong) transparent}
+        .menu::-webkit-scrollbar{width:8px} .menu::-webkit-scrollbar-thumb{background:var(--edge-strong);border-radius:4px}
+        .tree { padding: 8px 0; }
+        .tree-list { list-style: none; margin: 0; padding: 0 }
+        .tree-node { margin: 0 }
+        .tree-group-row { position: relative; display: flex; align-items: center; gap: 8px; margin: 4px 0; padding: 6px 8px; border-radius: 6px; font-weight: 600; color: var(--accent-strong); padding-left: 24px; user-select: none; transition: .15s; background: rgba(0,123,255,.04); }
+        .tree-group-row .tree-toggle { border: none; background: transparent; color: var(--muted); padding: 2px; border-radius: 4px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .tree-group-row .tree-toggle span { line-height: 1; font-size: 14px }
+        .tree-group-row .tree-toggle:hover { background: rgba(0,0,0,.05); color: var(--accent) }
+        .tree-group-row .tree-label { flex: 1 1 auto; min-width: 0 }
+        .tree-group-row:hover { background: rgba(0,123,255,.08) }
+        .tree-leaves { list-style: none; margin: 0; padding: 0 }
+        .tree-leaf { position: relative; width: 100%; display: flex; align-items: flex-start; gap: 12px; margin: 4px 0; background: #fff; border: 1px solid var(--edge); border-radius: 8px; color: inherit; cursor: pointer; text-align: left; transition: .2s; padding: 12px 14px 12px 24px; }
+        .tree-leaf .tree-label { flex: 1 1 auto; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.25; }
+        .tree-leaf:hover { border-color: var(--accent); background: #f8f9fa; transform: translateX(2px); box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+        .tree-leaf.active { border-color: var(--accent); background: #e9f4ff; box-shadow: 0 3px 14px rgba(0,123,255,.1); }
+        .tree-leaf:focus-visible { outline: none; border-color: var(--focus); background: #e9f4ff; box-shadow: 0 0 0 3px rgba(0,123,255,.25); }
+        .tree-tools { display: flex; gap: 6px; padding: 0 12px 8px; }
+        .tree-tool-btn { flex: 1; appearance: none; border-radius: 6px; border: 1px solid var(--edge); background: #fff; padding: 6px 8px; font-size: 12px; cursor: pointer; color: var(--muted); transition: .15s; white-space: nowrap; }
+        .tree-tool-btn:hover { background: #f8f9fa; border-color: var(--accent); color: var(--accent-strong); }
+        .badge{font-size:12px;padding:2px 10px;border-radius:999px;background:#e9ecef;color:#495057;border:1px solid #ced4da}
+        .hint{font-size:12px;color:var(--muted);padding:10px 18px 14px}
+        .content{display:flex;flex-direction:column;min-width:0;min-height:100vh}
+        .toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--edge);background:var(--panel);position:sticky;top:0;z-index:10}
+        .viewer{position:relative;flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;background:var(--bg);overflow:hidden;padding:8px;}
+        .flipbook-container{width:100%;height:100%;max-height:100%;}
+        .stf__wrapper{margin: 0 auto;}
+        .page-status{font-size:13px;color:var(--muted);white-space:nowrap; margin-left: auto;}
+        .viewer:fullscreen, .viewer:-webkit-full-screen {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 8px;
+            background-color: var(--bg);
+            overflow: hidden;
+        }
+        .viewer:fullscreen .flipbook-container, .viewer:-webkit-full-screen .flipbook-container {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidehead">
+                <div class="brand">
+                    <span id="brand-title">電子書匯出</span>
+                </div>
+                <div class="search"><input id="search" placeholder="搜尋章節 / 關鍵字" aria-label="搜尋章節" /></div>
+                <div class="tree-tools">
+                    <button id="treeExpandAll" type="button" class="tree-tool-btn">全部展開</button>
+                    <button id="treeCollapseAll" type="button" class="tree-tool-btn">全部縮合</button>
+                </div>
+            </div>
+            <nav class="menu" id="menu" aria-label="章節選單"></nav>
+            <div class="hint">↑ ↓ 選取、Enter 開啟、Ctrl/Cmd+F 搜尋</div>
+        </aside>
+
+        <div class="splitter" id="sidebar-splitter"></div>
+
+        <main class="content">
+            <header class="toolbar">
+                <span style="font-weight: 600; color: var(--accent-strong);">Viewer</span>
+                <button id="flip-first" class="pbtn"><<</button>
+                <button id="flip-prev" class="pbtn"><</button>
+                <button id="flip-next" class="pbtn">></button>
+                <button id="flip-last" class="pbtn">>></button>
+                <input id="flip-page-input" class="pinput" type="number" min="1" style="width: 60px;" />
+                <button id="flip-go" class="pbtn">Go</button>
+                <span style="border-left: 1px solid var(--edge); margin: 0 4px;"></span>
+                <button id="zoom-out" class="pbtn">-</button>
+                <span id="zoom-level" style="width: 50px; text-align: center;">100%</span>
+                <button id="zoom-in" class="pbtn">+</button>
+                <button id="zoom-reset" class="pbtn">重設</button>
+                <span style="border-left: 1px solid var(--edge); margin: 0 4px;"></span>
+                <button id="rotate-left" class="pbtn">↺</button>
+                <span id="rotation" style="width: 40px; text-align: center;">0°</span>
+                <button id="rotate-right" class="pbtn">↻</button>
+                <button id="fullscreen" class="pbtn">⛶</button>
+                <span id="flip-page-status" class="page-status">第 0 / 0 頁</span>
+            </header>
+            <section class="viewer" id="viewer">
+                <div id="flipbook-container" class="flipbook-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <script id="manifest" type="application/json">{"title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340","pdfMode":"Native","items":[{"id":"08fcc38eaf454e22abc9c1146bb8b718","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C1\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C1\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0001.png","page":1,"poster":null,"sortOrder":0},{"id":"8be7e1f23516422a98a85b534edcd2e8","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C2\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C2\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0002.png","page":2,"poster":null,"sortOrder":1},{"id":"841c4a635f5d4263b25b7f52b55db1d5","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C3\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C3\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0003.png","page":3,"poster":null,"sortOrder":2},{"id":"edfad64daa2645b2882a8fd80d7d2560","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C4\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C4\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0004.png","page":4,"poster":null,"sortOrder":3},{"id":"d82ebf1ecef94fac99686521bee8ed0f","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C5\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C5\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0005.png","page":5,"poster":null,"sortOrder":4},{"id":"3a95d32028a74d858018bc7200f424c6","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C6\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C6\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0006.png","page":6,"poster":null,"sortOrder":5},{"id":"21599715ea9a49ea98db79bd3d67d2a5","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C7\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C7\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0007.png","page":7,"poster":null,"sortOrder":6},{"id":"8102f4cd049f45909fb9905c210d0ac5","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C8\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C8\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0008.png","page":8,"poster":null,"sortOrder":7},{"id":"4aea2d88ffa64dd58b4f35c8b729f893","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C9\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C9\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0009.png","page":9,"poster":null,"sortOrder":8},{"id":"205b62788b184e759665b30b14e43e78","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C10\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C10\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0010.png","page":10,"poster":null,"sortOrder":9},{"id":"93104d79dde84c9aa1e2f1d2571e7acd","title":"\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026amp;A::\u7B2C11\u9801","breadcrumbs":["\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A","\u7B2C11\u9801"],"type":"Image","src":"assets/\u8CFC\u8CB7\u7BC0\u80FD\u96FB\u5668\u9000\u9084\u6E1B\u5FB5\u8CA8\u7269\u7A05\u5C08\u5340Q\u0026A_p0011.png","page":11,"poster":null,"sortOrder":10}]}</script>
+
+    <script src="./lib/pdfjs/pdf.js"></script>
+    <script src="./lib/pdfjs/viewer.js"></script>
+    <script src="./lib/stpageflip/stpageflip.js"></script>
+    <script>
+        const TREE_INDENT = 18;
+        const byId = id => document.getElementById(id);
+        let manifestRaw = '';
+        const manifestNode = byId('manifest');
+        if (manifestNode?.textContent) {
+            manifestRaw = manifestNode.textContent.trim();
+        }
+        let manifest;
+        try {
+            manifest = JSON.parse(manifestRaw || '{}');
+        } catch (err) {
+            console.warn('manifest 解析失敗，將改讀 manifest.json', err);
+            manifest = { title: '', items: [] };
+        }
+        const TITLE_DELIMITER = '::';
+
+        function parseSegments(title) {
+            return (title || '')
+                .split(TITLE_DELIMITER)
+                .map(part => part.trim())
+                .filter(Boolean);
+        }
+
+        function normalizeItems(rawItems) {
+            return (rawItems || []).map((rawItem, index) => {
+                const item = rawItem ?? {};
+                const fallback = `項目 ${index + 1}`;
+                const baseTitle = (item.title ?? '').toString().trim() || fallback;
+                const lineage = Array.isArray(item.breadcrumbs) && item.breadcrumbs.length > 0 ? item.breadcrumbs : parseSegments(baseTitle);
+                if (!lineage.length) { lineage.push(baseTitle); }
+                const displayTitle = lineage[lineage.length - 1];
+                return {
+                    id: item.id || `item_${index + 1}`,
+                    title: baseTitle,
+                    displayTitle,
+                    lineage,
+                    type: (item.type || 'image').toLowerCase(),
+                    src: item.src,
+                    page: item.page || 1,
+                    poster: item.poster,
+                    sortOrder: typeof item.sortOrder === 'number' ? item.sortOrder : index
+                };
+            });
+        }
+
+        const state = {
+            items: normalizeItems(manifest.items),
+            active: null
+        };
+        const treeState = { expanded: new Set() };
+        let currentTreeRoot = null;
+        let pageFlip;
+        let currentZoom = 1;
+        let baseScale = 1;
+        let currentRotation = 0;
+        let currentTranslateX = 0;
+        let basePageWidth = 1200;
+        let basePageHeight = 960;
+
+        async function ensureItemsLoaded() {
+            if (state.items.length) return;
+            try {
+                const response = await fetch('manifest.json', { cache: 'no-store' });
+                if (!response.ok) return;
+                const data = await response.json();
+                manifest.items = Array.isArray(data.items) ? data.items : [];
+                state.items = normalizeItems(manifest.items);
+            } catch (err) {
+                console.warn('無法載入 manifest.json', err);
+            }
+        }
+
+        const menu = byId('menu'), search = byId('search');
+        const treeExpandAllBtn = byId('treeExpandAll'), treeCollapseAllBtn = byId('treeCollapseAll');
+        const brandTitle = byId('brand-title');
+        if (brandTitle) { brandTitle.textContent = manifest.title || '電子書匯出'; }
+
+        
+        function currentIndex() { return state.active ? state.items.findIndex(x => x.id === state.active.id) : -1 }
+        function totalPages() { return state.items.length }
+        
+        function setIndex(i, fromUser = false) {
+            const t = totalPages(); if (!t) return;
+            const n = Math.min(t - 1, Math.max(0, i | 0));
+            const item = state.items[n]; if (!item) return;
+            state.active = item;
+            renderSidebar();
+            if (pageFlip && fromUser) {
+                pageFlip.flip(n);
+            }
+            // renderContent(); // Flipbook will have its own content rendering
+            history.replaceState(null, '', `#${encodeURIComponent(item.id)}`);
+            scrollActiveIntoView();
+            if (fromUser) { menu.querySelector(`button[data-id="${CSS.escape(item.id)}"]`)?.focus() }
+        }
+
+
+        function filterItems(keyword) {
+            const kw = (keyword || '').trim().toLowerCase();
+            if (!kw) return state.items;
+            return state.items.filter(it => (it.title + ' ' + it.displayTitle + ' ' + it.lineage.join(' ')).toLowerCase().includes(kw));
+        }
+
+        function buildTree(items) {
+            const root = { title: null, children: new Map(), pathSegments: [] };
+            items.forEach(item => {
+                const segments = item.lineage.length ? item.lineage : [item.displayTitle];
+                let node = root;
+                segments.forEach((segment, index) => {
+                    if (!node.children.has(segment)) {
+                        node.children.set(segment, { title: segment, children: new Map(), pathSegments: [...(node.pathSegments || []), segment], items: [] });
+                    }
+                    node = node.children.get(segment);
+                    if (index === segments.length - 1) {
+                        node.items.push(item);
+                    }
+                });
+            });
+            return root;
+        }
+
+        function renderTree(root, forceExpand) {
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+            tree.appendChild(renderTreeNodes(root, forceExpand, 0));
+            return tree;
+        }
+
+        function renderTreeNodes(node, forceExpand, depth) {
+            const list = document.createElement('ul');
+            list.className = 'tree-list';
+            for (const child of node.children.values()) {
+                const li = document.createElement('li');
+                li.className = 'tree-node';
+                const pathKey = child.pathSegments.join('::');
+                const hasChildren = child.children.size > 0;
+                const items = child.items || [];
+                const level = child.pathSegments.length;
+                const expanded = forceExpand || (hasChildren && treeState.expanded.has(pathKey));
+
+                if (hasChildren) {
+                    const row = document.createElement('div');
+                    row.className = 'tree-group-row';
+                    row.style.paddingLeft = (24 + (level - 1) * 16) + 'px';
+                    const toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'tree-toggle';
+                    toggle.innerHTML = `<span>${expanded ? '▾' : '▸'}</span>`;
+                    toggle.setAttribute('aria-label', '切換節點');
+                    toggle.addEventListener('click', ev => {
+                        ev.stopPropagation();
+                        if (treeState.expanded.has(pathKey)) {
+                            treeState.expanded.delete(pathKey);
+                        } else {
+                            treeState.expanded.add(pathKey);
+                        }
+                        renderSidebar();
+                    });
+                    row.appendChild(toggle);
+                    const label = document.createElement('span');
+                    label.className = 'tree-label';
+                    label.textContent = child.title;
+                    row.appendChild(label);
+                    row.addEventListener('click', () => toggle.click());
+                    li.appendChild(row);
+
+                    if (expanded) {
+                        if (items.length) {
+                            const leaves = document.createElement('ul');
+                            leaves.className = 'tree-list tree-leaves';
+                            items.forEach(item => leaves.appendChild(createLeafNode(item, level + 1)));
+                            li.appendChild(leaves);
+                        }
+                        const subtree = renderTreeNodes(child, forceExpand, level + 1);
+                        if (subtree.childElementCount > 0) li.appendChild(subtree);
+                    }
+                } else if (items.length) {
+                    const leaves = document.createElement('ul');
+                    leaves.className = 'tree-list tree-leaves';
+                    items.forEach(item => leaves.appendChild(createLeafNode(item, level || 1)));
+                    li.appendChild(leaves);
+                }
+                list.appendChild(li);
+            }
+            return list;
+        }
+
+        function createLeafNode(item, depth) {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'tree-leaf';
+            btn.dataset.id = item.id;
+            btn.style.paddingLeft = (40 + (depth - 1) * 16) + 'px';
+            const label = document.createElement('span');
+            label.className = 'tree-label';
+            label.textContent = item.displayTitle;
+            btn.append(label);
+            if (state.active?.id === item.id) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                const idx = state.items.findIndex(x => x.id === item.id);
+                if (idx >= 0) setIndex(idx, true);
+            });
+            li.appendChild(btn);
+            return li;
+        }
+
+        function expandAllTreeGroups() {
+            if (!currentTreeRoot) return;
+            treeState.expanded.clear();
+            (function collect(node) {
+                for (const child of node.children.values()) {
+                    if (!child.children.size) continue;
+                    treeState.expanded.add(child.pathSegments.join('::'));
+                    collect(child);
+                }
+            })(currentTreeRoot);
+            renderSidebar();
+        }
+
+        function collapseAllTreeGroups() {
+            treeState.expanded.clear();
+            renderSidebar();
+        }
+
+        function renderSidebar() {
+            menu.innerHTML = '';
+            const list = filterItems(search.value || '');
+            if (!list.length) {
+                currentTreeRoot = null;
+                menu.innerHTML = '<div class="hint">沒有符合的內容</div>';
+                return;
+            }
+            const treeRoot = buildTree(list);
+            currentTreeRoot = treeRoot;
+            const tree = renderTree(treeRoot, Boolean((search.value || '').trim()));
+            menu.appendChild(tree);
+            scrollActiveIntoView();
+        }
+
+        function scrollActiveIntoView() {
+            menu.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+        }
+
+        search.addEventListener('input', () => renderSidebar());
+        treeExpandAllBtn?.addEventListener('click', expandAllTreeGroups);
+        treeCollapseAllBtn?.addEventListener('click', collapseAllTreeGroups);
+        
+        (function () {
+            const splitter = byId('sidebar-splitter');
+            const sidebar = document.querySelector('.sidebar');
+            if (!splitter || !sidebar) return;
+            const MIN_WIDTH = 220, MAX_WIDTH = 640, STORAGE_KEY = 'ebook_sidebar_width';
+            try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) document.documentElement.style.setProperty('--sidebar-width', saved); } catch { }
+            let dragging = false, startX = 0, startWidth = 0;
+            function onMouseDown(e) {
+                if (window.innerWidth <= 960) return;
+                dragging = true;
+                startX = e.clientX;
+                startWidth = sidebar.getBoundingClientRect().width;
+                document.body.classList.add('resizing-sidebar');
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+            function onMouseMove(e) {
+                if (!dragging) return;
+                let newWidth = startWidth + (e.clientX - startX);
+                newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+                document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+            }
+            function onMouseUp() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.classList.remove('resizing-sidebar');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                try { const current = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim(); if (current) localStorage.setItem(STORAGE_KEY, current); } catch { }
+            }
+            splitter.addEventListener('mousedown', onMouseDown);
+        })();
+
+        (async function boot() {
+            await ensureItemsLoaded();
+            renderSidebar();
+            const hashId = decodeURIComponent(location.hash.replace('#', ''));
+            if (state.items.length) {
+                const i = hashId ? state.items.findIndex(x => x.id === hashId) : 0;
+                setIndex(i >= 0 ? i : 0);
+            }
+            await initializeFlipbook();
+        })();
+
+        async function measurePageRatios(items) {
+            const tasks = (items || []).map(item => new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img.naturalWidth && img.naturalHeight ? img.naturalHeight / img.naturalWidth : null);
+                img.onerror = () => resolve(null);
+                img.src = item?.src || '';
+            }));
+            const ratios = (await Promise.all(tasks)).filter(Boolean);
+            if (!ratios.length) return 1.33;
+            return Math.max(...ratios);
+        }
+
+        function computeAvailableSpace() {
+            const viewer = byId('viewer');
+            if (!viewer) return null;
+            const rect = viewer.getBoundingClientRect();
+            const style = getComputedStyle(viewer);
+            const paddingX = parseFloat(style.paddingLeft || '0') + parseFloat(style.paddingRight || '0');
+            const paddingY = parseFloat(style.paddingTop || '0') + parseFloat(style.paddingBottom || '0');
+            return { width: rect.width - paddingX, height: rect.height - paddingY };
+        }
+
+        function updateBaseScale() {
+            const space = computeAvailableSpace();
+            const rect = pageFlip?.getBoundsRect ? pageFlip.getBoundsRect() : null;
+            if (!space || !rect || !rect.width || !rect.height) { baseScale = 1; return; }
+            const scaleW = space.width / rect.width;
+            const scaleH = space.height / rect.height;
+            baseScale = Math.min(scaleW, scaleH) * 0.98; // leave tiny margin to avoid scrollbars
+        }
+
+        function updateOverflow() {
+            const viewer = byId('viewer');
+            if (!viewer) return;
+            viewer.style.overflow = currentZoom > 1.001 ? 'auto' : 'hidden';
+        }
+
+        async function initializeFlipbook() {
+            const flipbookContainer = byId('flipbook-container');
+            if (!flipbookContainer) return;
+
+            const maxRatio = await measurePageRatios(state.items);
+            basePageWidth = 720; // base single-page width for ratio calculation
+            basePageHeight = Math.round(basePageWidth * maxRatio);
+
+            pageFlip = new St.PageFlip(flipbookContainer, {
+                width: basePageWidth,
+                height: basePageHeight,
+                size: 'stretch',
+                showCover: true,
+                usePortrait: false
+            });
+
+            const pageElements = [];
+            state.items.forEach((item, index) => {
+                const pageEl = document.createElement('div');
+                pageEl.innerHTML = `<img src="${item.src}" style="width: 100%; height: 100%; object-fit: contain;">`;
+                pageElements.push(pageEl);
+            });
+            pageFlip.loadFromHTML(pageElements);
+
+            const status = byId('flip-page-status');
+            const input = byId('flip-page-input');
+
+            const updateStatus = () => {
+                const collection = pageFlip.getPageCollection();
+                if (!collection) return;
+
+                const pageCount = collection.getPageCount();
+                if (pageCount === 0) {
+                    status.textContent = `第 0 / 0 頁`;
+                    input.max = 1;
+                    input.value = '';
+                    return;
+                }
+
+                const currentSpreadIndex = collection.getCurrentSpreadIndex();
+                const currentSpread = collection.getSpread()[currentSpreadIndex];
+
+                let statusText;
+                if (currentSpread.length === 1) {
+                    statusText = `第 ${currentSpread[0] + 1} / ${pageCount} 頁`;
+                } else {
+                    statusText = `第 ${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pageCount} 頁`;
+                }
+                
+                status.textContent = statusText;
+                input.max = pageCount;
+                input.value = currentSpread[0] + 1;
+            };
+
+            const updateTransform = () => {
+                const wrapper = flipbookContainer.querySelector('.stf__wrapper');
+                if (wrapper) {
+                    const effectiveScale = (baseScale || 1) * currentZoom;
+                    wrapper.style.transition = 'transform 0.3s ease';
+                    wrapper.style.transformOrigin = '50% 0';
+                    wrapper.style.transform = `translateX(${currentTranslateX}px) scale(${effectiveScale}) rotate(${currentRotation}deg)`;
+                }
+                updateOverflow();
+            };
+
+            const updateBookAlignment = () => {
+                const collection = pageFlip.getPageCollection();
+                if (!collection) return;
+
+                const currentSpreadIndex = collection.getCurrentSpreadIndex();
+                const spreadCount = collection.getSpread().length;
+                const currentSpread = collection.getSpread()[currentSpreadIndex];
+                
+                currentTranslateX = 0;
+                if (currentSpread.length === 1 && spreadCount > 1) {
+                    const pageWidth = pageFlip.getBoundsRect().pageWidth;
+                    if (currentSpreadIndex === spreadCount - 1) {
+                        currentTranslateX = pageWidth / 2;
+                    } else {
+                        currentTranslateX = -pageWidth / 2;
+                    }
+                }
+                updateTransform();
+            };
+
+            const refreshScaleAndTransform = () => {
+                updateBaseScale();
+                updateTransform();
+                updateOverflow();
+            };
+
+            pageFlip.on('init', () => {
+                updateStatus();
+                updateBookAlignment();
+                refreshScaleAndTransform();
+            });
+
+            pageFlip.on('flip', () => {
+                updateStatus();
+                updateBookAlignment();
+                refreshScaleAndTransform();
+            });
+            pageFlip.on('changeOrientation', () => {
+                refreshScaleAndTransform();
+            });
+            
+            byId('flip-first').addEventListener('click', () => pageFlip.flip(0));
+            byId('flip-last').addEventListener('click', () => pageFlip.flip(pageFlip.getPageCount() - 1));
+            byId('flip-next').addEventListener('click', () => pageFlip.flipNext());
+            byId('flip-prev').addEventListener('click', () => pageFlip.flipPrev());
+            byId('flip-go').addEventListener('click', () => {
+                const page = parseInt(input.value, 10);
+                if (page > 0 && page <= pageFlip.getPageCount()) {
+                    pageFlip.flip(page - 1);
+                }
+            });
+
+            byId('zoom-in').addEventListener('click', () => {
+                currentZoom = Math.min(3, currentZoom + 0.1);
+                byId('zoom-level').textContent = `${Math.round(currentZoom * 100)}%`;
+                updateTransform();
+            });
+
+            byId('zoom-out').addEventListener('click', () => {
+                currentZoom = Math.max(0.5, currentZoom - 0.1);
+                byId('zoom-level').textContent = `${Math.round(currentZoom * 100)}%`;
+                updateTransform();
+            });
+
+            byId('zoom-reset').addEventListener('click', () => {
+                currentZoom = 1;
+                currentRotation = 0;
+                byId('zoom-level').textContent = '100%';
+                byId('rotation').textContent = '0°';
+                updateBookAlignment();
+                updateBaseScale();
+                updateTransform();
+            });
+
+            byId('rotate-left').addEventListener('click', () => {
+                currentRotation -= 90;
+                byId('rotation').textContent = `${currentRotation}°`;
+                updateTransform();
+            });
+
+            byId('rotate-right').addEventListener('click', () => {
+                currentRotation += 90;
+                byId('rotation').textContent = `${currentRotation}°`;
+                updateTransform();
+            });
+
+            byId('fullscreen').addEventListener('click', () => {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    byId('viewer').requestFullscreen();
+                }
+            });
+
+            document.addEventListener('fullscreenchange', () => {
+                setTimeout(() => {
+                    if (!document.fullscreenElement) {
+                        currentZoom = 1;
+                        currentRotation = 0;
+                        byId('zoom-level').textContent = '100%';
+                        byId('rotation').textContent = '0°';
+                    }
+                    updateBookAlignment();
+                    refreshScaleAndTransform();
+                }, 300);
+            });
+
+            window.addEventListener('resize', refreshScaleAndTransform);
+        }
+    </script>
+</body>
+</html>

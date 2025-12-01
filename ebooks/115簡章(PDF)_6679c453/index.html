@@ -1,0 +1,1563 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>清爽閱讀｜電子書匯出</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f8f9fa;
+            --panel: #fff;
+            --muted: #6c757d;
+            --text: #212529;
+            --accent: #007bff;
+            --accent-strong: #0056b3;
+            --focus: #007bff;
+            --edge: #dee2e6;
+            --edge-strong: #ced4da;
+            --paper: #fff;
+            font-family: "Segoe UI","Noto Sans TC",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            --font-display: "Noto Sans TC","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            /* 新增：可調整的側欄寬度與分隔線寬度 */
+            --sidebar-width: 320px;
+            --splitter-width: 6px;
+            --image-card-max-width: 1024px; /* ← 你原本這行要補上分號 */
+        }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;min-height:100vh;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+    /* 版面 */
+        .app {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) var(--splitter-width) minmax(0, 1fr);
+        }
+        /* 可拖曳的垂直分隔線 */
+        .splitter {
+            /* 使用 col-resize 即可，現代瀏覽器普遍支援 */
+            cursor: col-resize;
+            background: linear-gradient(to right, #e9ecef, #ced4da, #e9ecef);
+            border-right: 1px solid var(--edge);
+            /* border-left: 1px solid #f1f3e5;  已移除，因為漸層背景已足夠 */
+        }
+
+
+            .splitter:hover {
+                cursor: ew-resize;
+                cursor: col-resize;
+            }
+
+
+        /* 拖曳期間，全域改成不可選取 + col-resize */
+        body.resizing-sidebar {
+            user-select: none;
+            cursor: ew-resize !important;
+            cursor: col-resize !important;
+        }
+        @media (max-width:960px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .splitter {
+                display: none;
+            }
+        }
+
+    /* 側欄 */
+    .sidebar{background:var(--panel);border-right:1px solid var(--edge);display:flex;flex-direction:column;position:sticky;top:0;align-self:start;height:100vh;overflow:hidden}
+    .sidehead{position:sticky;top:0;z-index:3;background:var(--panel);border-bottom:1px solid var(--edge)}
+    .brand{padding:16px 18px 6px;font-weight:700;letter-spacing:.06em;color:var(--accent-strong);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .brand #brand-title{font-family:var(--font-display,"Segoe UI","Noto Sans TC",system-ui,-apple-system,BlinkMacSystemFont,sans-serif)}
+    .template-chip{font-size:12px;font-weight:600;border-radius:999px;background:var(--chip-bg, rgba(0,123,255,.12));color:var(--chip-text, var(--accent-strong));padding:4px 10px;line-height:1;text-transform:capitalize;letter-spacing:.05em}
+
+    /* 分頁控制 */
+    .pager{display:flex;align-items:center;gap:6px;padding:8px 12px 10px;border-bottom:1px solid var(--edge)}
+    .pbtn{appearance:none;border:1px solid var(--edge);background:#fff;color:var(--accent-strong);border-radius:6px;padding:6px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+    .pbtn svg{width:16px;height:16px}
+    .pbtn:hover{background:#f8f9fa;border-color:var(--accent)} .pbtn:active{transform:translateY(1px)}
+    .pbtn:disabled{opacity:.45;cursor:not-allowed}
+    .pnum{display:flex;align-items:center;gap:6px;margin-left:auto}
+    .pinput{width:7.5ch;padding:6px 8px;border-radius:6px;border:1px solid var(--edge);background:#fff;color:var(--text)}
+    .ptotal{font-size:12px;color:var(--muted);white-space:nowrap}
+
+    .search{padding:10px 12px 12px}
+    .search input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#fff;color:var(--text);transition:.2s}
+    .search input::placeholder{color:#6c757d}
+    .search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,255,.25)}
+
+    .menu{flex:1;overflow-y:auto;padding:0 12px 12px;scrollbar-width:thin;scrollbar-color:var(--edge-strong) transparent}
+    .menu::-webkit-scrollbar{width:8px} .menu::-webkit-scrollbar-thumb{background:var(--edge-strong);border-radius:4px}
+    .menu button{width:100%;display:flex;align-items:flex-start;gap:12px;padding:12px 14px;margin:4px 0;background:#fff;border:1px solid var(--edge);border-radius:8px;color:inherit;cursor:pointer;text-align:left;transition:.2s}
+    .menu button span:first-of-type{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.25}
+    .menu .badge{margin-left:auto;align-self:flex-start;flex-shrink:0;white-space:nowrap}
+    .menu button svg{flex:0 0 auto;width:16px;height:16px;color:#8c7b62;margin-top:2px}
+    .menu button:hover{border-color:var(--accent);background:#f8f9fa;transform:translateX(2px);box-shadow:0 2px 10px rgba(0,0,0,.05)}
+    .menu button.active{border-color:var(--accent);background:#e9f4ff;box-shadow:0 3px 14px rgba(0,123,255,.1)}
+    .menu button:focus-visible{outline:none;border-color:var(--focus);background:#e9f4ff;box-shadow:0 0 0 3px rgba(0,123,255,.25)}
+
+        /* Tree 區塊：父節點有背景，葉節點無 icon、靠 JS 計算縮排 */
+
+        .tree {
+            padding: 8px 0;
+        }
+
+        .tree-list {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+
+        .tree-node {
+            margin: 0
+        }
+
+        .tree-group-row {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: var(--accent-strong);
+            /* 預設先給一點縮排，之後由 JS 覆寫 padding-left */
+            padding-left: 24px;
+            user-select: none;
+            transition: .15s;
+            background: rgba(0,123,255,.04);
+        }
+
+            .tree-group-row .tree-toggle {
+                border: none;
+                background: transparent;
+                color: var(--muted);
+                padding: 2px;
+                border-radius: 4px;
+                width: 20px;
+                height: 20px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+                .tree-group-row .tree-toggle span {
+                    line-height: 1;
+                    font-size: 14px
+                }
+
+                .tree-group-row .tree-toggle:hover {
+                    background: rgba(0,0,0,.05);
+                    color: var(--accent)
+                }
+
+            .tree-group-row .tree-label {
+                flex: 1 1 auto;
+                min-width: 0
+            }
+
+            .tree-group-row:hover {
+                background: rgba(0,123,255,.08)
+            }
+
+        .tree-leaves {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+
+        .tree-leaf {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 4px 0;
+            background: #fff;
+            border: 1px solid var(--edge);
+            border-radius: 8px;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: .2s;
+            /* 預設 padding-left 先給 24，之後由 JS 覆寫 */
+            padding: 12px 14px 12px 24px;
+        }
+
+            /* 套在 .menu 裡一樣生效，不再另外寫 .menu button.tree-leaf */
+
+            .tree-leaf .tree-label {
+                flex: 1 1 auto;
+                min-width: 0;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                line-height: 1.25;
+            }
+
+            .tree-leaf:hover {
+                border-color: var(--accent);
+                background: #f8f9fa;
+                transform: translateX(2px);
+                box-shadow: 0 2px 10px rgba(0,0,0,.05);
+            }
+
+            .tree-leaf.active {
+                border-color: var(--accent);
+                background: #e9f4ff;
+                box-shadow: 0 3px 14px rgba(0,123,255,.1);
+            }
+
+            .tree-leaf:focus-visible {
+                outline: none;
+                border-color: var(--focus);
+                background: #e9f4ff;
+                box-shadow: 0 0 0 3px rgba(0,123,255,.25);
+            }
+
+    /* Tree 樹線 */
+    .tree-group-row::before,
+    .tree-leaf::before{
+        content:'';
+        position:absolute;
+        top:0;
+        bottom:0;
+        left:calc(24px + (var(--depth,1)-1) * var(--tree-indent));
+        border-left:1px solid var(--tree-line);
+        pointer-events:none;
+    }
+    .tree-leaf::after{
+        content:'';
+        position:absolute;
+        top:50%;
+        left:calc(24px + (var(--depth,1)-1) * var(--tree-indent));
+        width:18px;
+        border-top:1px solid var(--tree-line);
+        transform:translateY(-50%);
+        pointer-events:none;
+    }
+        .tree-tools {
+            display: flex;
+            gap: 6px;
+            padding: 0 12px 8px;
+        }
+
+        .tree-tool-btn {
+            flex: 1;
+            appearance: none;
+            border-radius: 6px;
+            border: 1px solid var(--edge);
+            background: #fff;
+            padding: 6px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--muted);
+            transition: .15s;
+            white-space: nowrap;
+        }
+
+            .tree-tool-btn:hover {
+                background: #f8f9fa;
+                border-color: var(--accent);
+                color: var(--accent-strong);
+            }
+
+    /* 葉節點：在 menu 內強制縮排（覆蓋 .menu button 的 padding） */
+    .menu button.tree-leaf{
+        padding:12px 14px 12px calc(48px + (var(--depth,1)-1) * var(--tree-indent));
+    }
+
+    .badge{font-size:12px;padding:2px 10px;border-radius:999px;background:#e9ecef;color:#495057;border:1px solid #ced4da}
+    .hint{font-size:12px;color:var(--muted);padding:10px 18px 14px}
+
+    /* 內容區 */
+    .content{display:flex;flex-direction:column;min-width:0}
+    .toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--edge);background:#fff;position:sticky;top:0;z-index:10}
+    .toolbar .title{font-size:18px;font-weight:600;color:var(--accent-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* 縮放控制 */
+    .zoom-controls{display:flex;align-items:center;gap:6px;margin-left:auto;border:1px solid var(--edge);border-radius:6px;padding:4px 6px;background:#f8f9fa}
+    .zoom-btn{appearance:none;border:1px solid #ced4da;background:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;transition:.15s}
+    .zoom-btn:hover{background:#f8f9fa;border-color:#adb5bd} .zoom-btn:active{transform:translateY(1px)}
+    .zoom-label{font-size:12px;color:#6b7280;padding:0 4px;min-width:44px;text-align:center}
+    .page-status{margin-left:auto;padding:6px 10px;border:1px solid var(--edge);border-radius:6px;background:var(--bg);font-size:13px;color:var(--muted);white-space:nowrap}
+
+    .btn{display:inline-flex;align-items:center;gap:8px;margin-left:12px;padding:8px 14px;border-radius:6px;border:1px solid #007bff;color:#fff;text-decoration:none;background:#007bff;transition:.2s;max-width:50vw}
+    .btn:hover{background:#0056b3;border-color:#0056b3;box-shadow:0 2px 12px rgba(0,123,255,.2);transform:translateY(-1px)}
+
+    /* 閱讀區 */
+    .viewer{position:relative;flex:1;min-height:0;display:grid;place-items:stretch;background:var(--bg);overflow:auto}
+        .viewer.align-top {
+            place-items: start center;
+        }
+
+        /* 影片容器：寬高由內容決定，不強制撐滿 viewer */
+        .page.video-mode {
+            aspect-ratio: auto;
+            padding: clamp(10px,2vw,24px); /* 保留一點內距 */
+            overflow: visible;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            margin: 0 auto;
+            background: var(--paper);
+            border-radius: 8px;
+            border: 1px solid var(--edge);
+            box-shadow: 0 8px 24px rgba(0,0,0,.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            /* 影片本體：用原始尺寸，必要時才縮到不超出容器 */
+            .page.video-mode .page-media {
+                width: auto;
+                height: auto;
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+                border: none;
+                border-radius: 6px;
+            }
+
+
+    .page{
+      position:relative;width:100%;height:100%;background:var(--paper);color:#212529;
+      display:flex;align-items:center;justify-content:center;padding:clamp(10px,2vw,24px);
+      overflow:auto;
+    }
+        /* 圖片一般模式：置中、寬不超過右側視窗 */
+        .page.image-mode {
+            width: auto;
+            height: auto;
+            max-width: min(100%, var(--image-card-max-width));
+            max-height: 100%;
+            margin: 0 auto;
+        }
+            /* 圖片全視窗模式：鋪滿右側 viewer 可視區 */
+            .page.image-mode.image-full {
+                width: 100%;
+                height: 100%;
+                max-width: none;
+                max-height: none;
+                padding: 0;
+            }
+
+                .page.image-mode.image-full .page-media {
+                    border-radius: 0;
+                    border-width: 0;
+                }
+    .page.video-mode{aspect-ratio:auto;padding:0;overflow:visible;width:100%}
+    .page.video-mode .page-media{width:100%;height:auto;max-height:none;object-fit:contain;border:1px solid var(--edge);border-radius:6px}
+
+    @media (max-width:600px){.page{aspect-ratio:4/3}}
+    .page::after{content:'';position:absolute;inset:0;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);pointer-events:none}
+    .page-enter{animation:pageTurn 420ms ease}
+    @keyframes pageTurn{
+      0%{transform:rotateY(-14deg) scale(.96);opacity:0}
+      55%{transform:rotateY(5deg) scale(1.01);opacity:1}
+      100%{transform:rotateY(0) scale(1);opacity:1}
+    }
+
+    .page-media{width:100%;height:100%;max-width:100%;max-height:100%;border:none;border-radius:6px;background:#fff;border:1px solid var(--edge);object-fit:contain;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality}
+    .page-placeholder{text-align:center;color:#7a7a7a;letter-spacing:.02em;font-size:15px;line-height:1.75;padding:12px}
+
+    .pbtn:focus-visible,.zoom-btn:focus-visible,.btn:focus-visible,.search input:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(0,123,255,.25)}
+    .menu button:active{transform:translateX(1px) scale(.998)}
+
+    /* 視圖切換 */
+    .view-toggle{display:flex;padding:8px 12px 4px;gap:6px}
+    .view-btn{flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--edge);background:#fff;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+    .view-btn:hover{background:#f8f9fa;border-color:var(--edge-strong)}
+    .view-btn.active{background:#e9f4ff;border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+    .view-btn svg{width:16px;height:16px}
+
+    /* 縮圖網格 */
+    .menu-grid{display:none;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;padding:12px;flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--edge-strong) transparent}
+    .grid-item{display:flex;flex-direction:column;gap:6px;border:1px solid var(--edge);border-radius:6px;background:#fff;padding:8px;cursor:pointer;text-decoration:none;color:inherit;transition:.15s}
+    .grid-item:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.07)}
+    .grid-item.active{border-color:var(--accent-strong);box-shadow:0 0 0 3px rgba(0,123,255,.25)}
+    .grid-thumb{aspect-ratio:4/3;border-radius:4px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--edge)}
+    .grid-thumb img{width:100%;height:100%;object-fit:cover}
+    .grid-thumb svg{width:32px;height:32px;color:#adb5bd}
+    .grid-title{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}
+    /* Light Reader */
+body.theme-light{
+  --chip-bg: rgba(13,110,253,.14);
+  --chip-text:#0d4fd1;
+  background:#f4f6fb;
+}
+body.theme-light .viewer{
+  background:radial-gradient(circle at top,#ffffff 0%,#f3f6fb 55%,#e7ecf5 100%);
+}
+body.theme-light .page{
+  border-radius:14px;
+  border:1px solid #e1e6f0;
+  box-shadow:0 28px 80px rgba(15,23,42,.12);
+}
+body.theme-light .page::after{
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px rgba(13,110,253,.08);
+}
+body.theme-light .menu button,
+body.theme-light .tree-leaf,
+body.theme-light .grid-item{
+  background:#fff;
+  border-color:#e1e6f0;
+}
+body.theme-light .menu button:hover,
+body.theme-light .tree-leaf:hover{
+  background:#f4f7fb;
+  box-shadow:0 6px 18px rgba(15,23,42,.08);
+}
+body.theme-light .menu button.active,
+body.theme-light .tree-leaf.active{
+  background:#e9f4ff;
+}
+body.theme-light .grid-thumb{
+  background:#edf2fb;
+}
+body.theme-light .pbtn,
+body.theme-light .search input{
+  background:#fff;
+  border-color:#dfe6f2;
+}
+body.theme-light .page-placeholder{
+  color:#6b7280;
+}
+
+
+        /* ===== 只針對影片頁面 (type:"video") 的版面調整 ===== */
+
+        /* 當右側 viewer 處於影片模式時（程式有加上 .align-top） */
+        .viewer.align-top {
+            display: grid;
+            place-items: start center;
+            padding: clamp(12px, 3vw, 24px);
+        }
+
+        .page.video-mode {
+            width: 100%;
+            max-width: 1100px;
+            height: auto;
+            max-height: 100%;
+            margin: 0 auto;
+            padding: 0;
+            background: var(--paper);
+            border-radius: 8px;
+            border: 1px solid var(--edge);
+            box-shadow: 0 8px 24px rgba(0,0,0,.08);
+            overflow: hidden;
+        }
+
+        .page.video-mode .page-media {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border: none;
+            border-radius: 0;
+        }
+
+        @media (max-width: 768px) {
+            .viewer.align-top {
+                place-items: start stretch;
+                padding: 8px 0;
+            }
+
+            .page.video-mode {
+                max-width: none;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+
+            .page.video-mode .page-media {
+                width: 100%;
+                height: auto;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body class="theme-light" data-template="light-reader" data-template-name="清爽閱讀" data-color-scheme="light">
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidehead">
+                <div class="brand">
+                    <span id="brand-title">電子書匯出</span>
+                </div>
+
+                <div class="pager" aria-label="頁面導覽">
+                    <button id="btnFirst" class="pbtn" title="第一頁" aria-label="第一頁"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 5h2v10H4zM7 10l9-6v12z" /></svg></button>
+                    <button id="btnPrev" class="pbtn" title="上一頁" aria-label="上一頁"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M12 5 6 10l6 5V5z" /></svg></button>
+                    <button id="btnNext" class="pbtn" title="下一頁" aria-label="下一頁"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 5v10l6-5-6-5z" /></svg></button>
+                    <button id="btnLast" class="pbtn" title="最後頁" aria-label="最後頁"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M14 5h2v10h-2zM13 10 4 16V4z" /></svg></button>
+
+                    <div class="pnum">
+                        <input id="pageInput" class="pinput" type="number" min="1" step="1" placeholder="頁碼" aria-label="跳至頁碼" />
+                        <span id="pageTotal" class="ptotal">/ —</span>
+                        <button id="btnGo" class="pbtn" title="跳至頁碼" aria-label="跳至頁碼">
+                            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm5.5-.75h4.19l-1.72-1.72 1.06-1.06L15 10l-4 4-1.06-1.06 1.72-1.69H7.5v-1.5Z" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="search"><input id="search" placeholder="搜尋章節 / 關鍵字" aria-label="搜尋章節" /></div>
+                <div class="tree-tools">
+                    <button id="treeExpandAll" type="button" class="tree-tool-btn">全部展開</button>
+                    <button id="treeCollapseAll" type="button" class="tree-tool-btn">全部縮合</button>
+                </div>
+
+                <div class="view-toggle">
+                    <button id="view-list-btn" class="view-btn active" title="列表檢視">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" /></svg>
+                        <span>列表</span>
+                    </button>
+                    <button id="view-grid-btn" class="view-btn" title="縮圖檢視">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3ZM3 8a1 1 0 0 1 1-1h1V3a3 3 0 0 0-3 3v1h1V8Zm13 1V3a3 3 0 0 0-3-3H8a3 3 0 0 0-3 3v1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1a3 3 0 0 0 3-3V9h-1ZM8 15a1 1 0 0 1 1-1h1v-1a3 3 0 0 0-3-3H4a3 3 0 0 0-3 3v1h1v-1a1 1 0 0 1 1-1h1v1Z" /></svg>
+                        <span>縮圖</span>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="menu" id="menu" aria-label="章節選單"></nav>
+            <div class="menu-grid" id="menu-grid"></div>
+            <div class="hint">↑ ↓ 選取、Enter 開啟、Ctrl/Cmd+F 搜尋</div>
+        </aside>
+        <!-- 新增：可拖曳分隔線 -->
+        <div class="splitter" id="sidebar-splitter" aria-hidden="true"></div>
+        <main class="content">
+            <header class="toolbar">
+                <div class="title" id="title">請選擇內容</div>
+
+                <div class="zoom-controls" aria-label="縮放控制">
+                    <button id="zoomOut" class="zoom-btn" title="縮小">−</button>
+                    <span id="zoomLabel" class="zoom-label">100%</span>
+                    <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
+                    <button id="zoomReset" class="zoom-btn" title="重置">100%</button>
+                </div>
+
+                <span id="pageStatus" class="page-status">第 — / — 頁</span>
+
+                <a id="openRaw" class="btn" href="#" target="_blank" rel="noreferrer">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:18px;height:18px">
+                        <path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M6.194 12.753a.75.75 0 0 0 1.06.053L16.25 4.81v3.44a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h3.44L7.247 11.694a.75.75 0 0 0-.053 1.06Z" clip-rule="evenodd" />
+                    </svg>
+                    <span>在新視窗開啟</span>
+                </a>
+            </header>
+
+            <section class="viewer" id="viewer">
+                <div class="page">
+                    <div class="page-placeholder">尚未選取任何內容</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 外部會將 __MANIFEST__ 替換為實際資料 -->
+    <script id="manifest" type="application/json">{"title":"115\u7C21\u7AE0(PDF)","pdfMode":"Native","items":[{"id":"d524f2471a1c42faabaff6ab5c422847","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57 :: \u4E00\u3001 \u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_7","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57","\u4E00\u3001 \u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_7"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0007.pdf","page":7,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0007.png","sortOrder":0},{"id":"f3a759d422804085857aca48db5eb85b","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57 :: \u4E8C\u3001 \u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_8","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57","\u4E8C\u3001 \u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_8"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0008.pdf","page":8,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0008.png","sortOrder":1},{"id":"4bdd32b100764cccbea9ec46119a423d","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57 :: \u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_8","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u58F9\u3001\u9AD8\u4E2D\u82F1\u8A9E\u807D\u529B\u6E2C\u9A57","\u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_8"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0008_1.pdf","page":8,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0008_1.png","sortOrder":2},{"id":"6546ef049db545d18dd79fb3f6623ffc","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E00\u3001 \u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_9","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E00\u3001 \u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_9"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0009.pdf","page":9,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0009.png","sortOrder":3},{"id":"24362be91c0546f68cef68e4ad06c095","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E8C\u3001 \u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_10","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E8C\u3001 \u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_10"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0010.pdf","page":10,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0010.png","sortOrder":4},{"id":"a63379b8b7cd4f698ce1b4c36662124a","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_10","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_10"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0010_1.pdf","page":10,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0010_1.png","sortOrder":5},{"id":"4b1312ba572542448548685d9da85a24","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_11","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_11"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0011.pdf","page":11,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0011.png","sortOrder":6},{"id":"4fdb48e2e12749c08414339448d96ae3","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_12","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_12"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0012.pdf","page":12,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0012.png","sortOrder":7},{"id":"bcc4e6db30d64b87a44534ed4d62faf8","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57 :: \u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_13","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u8CB3\u3001\u5B78\u79D1\u80FD\u529B\u6E2C\u9A57","\u4E09\u3001 \u6210\u7E3E\u8A08\u7B97_13"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0013.pdf","page":13,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0013.png","sortOrder":8},{"id":"8ecf689411ef408497326613247cfb1b","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u53C1\u3001\u5206\u79D1\u6E2C\u9A57 :: \u4E00\u3001\u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_14","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u53C1\u3001\u5206\u79D1\u6E2C\u9A57","\u4E00\u3001\u8003\u8A66\u65E5\u671F\u53CA\u6642\u9593_14"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0014.pdf","page":14,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0014.png","sortOrder":9},{"id":"4fe40c108a334e089e60ceaabfafc1bf","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u53C1\u3001\u5206\u79D1\u6E2C\u9A57 :: \u4E8C\u3001\u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_15","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u53C1\u3001\u5206\u79D1\u6E2C\u9A57","\u4E8C\u3001\u6E2C\u9A57\u7BC4\u570D\u53CA\u984C\u578B_15"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0015.pdf","page":15,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0015.png","sortOrder":10},{"id":"d570d31aa62542a4b6151089e87f50f8","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u53C1\u3001\u5206\u79D1\u6E2C\u9A57 :: \u4E09\u3001\u6210\u7E3E\u8A08\u7B97_16","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u53C1\u3001\u5206\u79D1\u6E2C\u9A57","\u4E09\u3001\u6210\u7E3E\u8A08\u7B97_16"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0016.pdf","page":16,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0016.png","sortOrder":11},{"id":"c052e19de61c42c79ed7fed2812d6db4","title":"\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E :: \u53C1\u3001\u5206\u79D1\u6E2C\u9A57 :: \u4E09\u3001\u6210\u7E3E\u8A08\u7B97_17","breadcrumbs":["\u7B2C\u4E00\u90E8\u5206 \u8003\u8A66\u6E2C\u9A57\u8AAA\u660E","\u53C1\u3001\u5206\u79D1\u6E2C\u9A57","\u4E09\u3001\u6210\u7E3E\u8A08\u7B97_17"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0017.pdf","page":17,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0017.png","sortOrder":12},{"id":"e3c18b0261aa4cdbb580cd7196651109","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u8086\u3001\u5831\u8003\u8CC7\u683C_18","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u8086\u3001\u5831\u8003\u8CC7\u683C_18"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018.pdf","page":18,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018.png","sortOrder":13},{"id":"8e5abb3eb47f4e33a80f7b946186f1a7","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E00\u3001\u5831\u540D\u65E5\u671F_18","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E00\u3001\u5831\u540D\u65E5\u671F_18"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018_1.pdf","page":18,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018_1.png","sortOrder":14},{"id":"28beb50fd3684e36853f93da76bd9934","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E8C\u3001\u5831\u540D\u65B9\u5F0F_18","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E8C\u3001\u5831\u540D\u65B9\u5F0F_18"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018_2.pdf","page":18,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0018_2.png","sortOrder":15},{"id":"17818c200eaa4fd3baa7d5ee143f48a7","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E09\u3001\u5831\u540D\u61C9\u5099\u8CC7\u6599_19","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E09\u3001\u5831\u540D\u61C9\u5099\u8CC7\u6599_19"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0019.pdf","page":19,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0019.png","sortOrder":16},{"id":"2bd8f4a04b4a4e84bae54fd0280673ef","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u56DB\u3001\u5831\u540D\u8CBB\u53CA\u7E73\u8CBB\u671F\u9593_20","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u56DB\u3001\u5831\u540D\u8CBB\u53CA\u7E73\u8CBB\u671F\u9593_20"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0020.pdf","page":20,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0020.png","sortOrder":17},{"id":"b3a55b192b664fef9ff17b4363e559a2","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_21","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_21"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0021.pdf","page":21,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0021.png","sortOrder":18},{"id":"795856e0199b468ea426ce47b44c4c09","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_22","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_22"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0022.pdf","page":22,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0022.png","sortOrder":19},{"id":"53bd1f7805634625a70928dfa40847e0","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_23","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E94\u3001\u7E73\u8CBB\u624B\u7E8C_23"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0023.pdf","page":23,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0023.png","sortOrder":20},{"id":"499e28bf1c3b45c2a26ccfc3bcd9f782","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u516D\u3001\u5831\u540D\u8CBB\u9000\u8CBB_24","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u516D\u3001\u5831\u540D\u8CBB\u9000\u8CBB_24"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0024.pdf","page":24,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0024.png","sortOrder":21},{"id":"6949b6beebfc403ea24b92f5429ba292","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E03\u3001\u5831\u540D\u6CE8\u610F\u4E8B\u9805_24","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E03\u3001\u5831\u540D\u6CE8\u610F\u4E8B\u9805_24"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0024_1.pdf","page":24,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0024_1.png","sortOrder":22},{"id":"9b77e4949dc248ce9c88d3994b3c6ae0","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u4F0D\u3001\u5831\u540D :: \u4E03\u3001\u5831\u540D\u6CE8\u610F\u4E8B\u9805_25","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u4F0D\u3001\u5831\u540D","\u4E03\u3001\u5831\u540D\u6CE8\u610F\u4E8B\u9805_25"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0025.pdf","page":25,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0025.png","sortOrder":23},{"id":"72a0b65c093a4ae389fc897866a85e1c","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63 :: \u4E00\u3001 \u5831\u540D\u671F\u9593_26","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63","\u4E00\u3001 \u5831\u540D\u671F\u9593_26"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026.pdf","page":26,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026.png","sortOrder":24},{"id":"6fa223b79f604c28b84fc72fbc6a0ab4","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63 :: \u4E8C\u3001 \u78BA\u8A8D\u5831\u540D\u8CC7\u6599\u671F\u9593_26","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63","\u4E8C\u3001 \u78BA\u8A8D\u5831\u540D\u8CC7\u6599\u671F\u9593_26"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026_1.pdf","page":26,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026_1.png","sortOrder":25},{"id":"ea6ebe25108144f3a8e19a37c6929f2c","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63 :: \u4E09\u3001 \u66F4\u6539\u57FA\u672C\u8CC7\u6599_26","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63","\u4E09\u3001 \u66F4\u6539\u57FA\u672C\u8CC7\u6599_26"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026_2.pdf","page":26,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0026_2.png","sortOrder":26},{"id":"73736e792e724b46a75d62f625d96a53","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63 :: \u4E09\u3001 \u66F4\u6539\u57FA\u672C\u8CC7\u6599_27","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u9678\u3001\u8CC7\u6599\u78BA\u8A8D\u8207\u66F4\u6B63","\u4E09\u3001 \u66F4\u6539\u57FA\u672C\u8CC7\u6599_27"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0027.pdf","page":27,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0027.png","sortOrder":27},{"id":"f54eb7ab5c3c4ca7a7ef688ad38c6ef0","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D :: \u4E00\u3001 \u8003\u8A66\u7E23\u5E02\u5730\u5340_28","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D","\u4E00\u3001 \u8003\u8A66\u7E23\u5E02\u5730\u5340_28"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028.pdf","page":28,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028.png","sortOrder":28},{"id":"5eecc0e7298e452aa888ee59c1ad080b","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D :: \u4E8C\u3001 \u61C9\u8003\u8CC7\u8A0A\u8207\u8A66\u5834\u5206\u914D_28","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D","\u4E8C\u3001 \u61C9\u8003\u8CC7\u8A0A\u8207\u8A66\u5834\u5206\u914D_28"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028_1.pdf","page":28,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028_1.png","sortOrder":29},{"id":"822a61738e4f407e9778460a8662d434","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D :: \u4E09\u3001 \u8A66\u5834\u67E5\u770B\u958B\u653E\u6642\u9593_28","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u67D2\u3001\u8003\u8A66\u5730\u5340\u53CA\u8A66\u5834\u5206\u914D","\u4E09\u3001 \u8A66\u5834\u67E5\u770B\u958B\u653E\u6642\u9593_28"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028_2.pdf","page":28,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0028_2.png","sortOrder":30},{"id":"4ba40ec86e194318a599ed642f9127d6","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E00\u3001 \u670D\u52D9\u5C0D\u8C61_29","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E00\u3001 \u670D\u52D9\u5C0D\u8C61_29"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029.pdf","page":29,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029.png","sortOrder":31},{"id":"8e9ef26ecfd64b2899c139046ee99dc6","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E8C\u3001 \u670D\u52D9\u9805\u76EE_29","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E8C\u3001 \u670D\u52D9\u9805\u76EE_29"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029_1.pdf","page":29,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029_1.png","sortOrder":32},{"id":"75a456b891d24d6bb30b9bb5edefb4c8","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_29","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_29"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029_2.pdf","page":29,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0029_2.png","sortOrder":33},{"id":"373c22de2e60413fa893018576355e99","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_30","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_30"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0030.pdf","page":30,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0030.png","sortOrder":34},{"id":"b53c71703c284119a92737af5b1d3e6e","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_31","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_31"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0031.pdf","page":31,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0031.png","sortOrder":35},{"id":"06d468f2f4874702b885028897474dd8","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_32","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E09\u3001 \u7533\u8ACB\u8AAA\u660E_32"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0032.pdf","page":32,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0032.png","sortOrder":36},{"id":"5caadcbea1b647ba9a91a5f14201987a","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u56DB\u3001 \u5BE9\u67E5_33","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u56DB\u3001 \u5BE9\u67E5_33"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0033.pdf","page":33,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0033.png","sortOrder":37},{"id":"6f6a419d48094daabe70699d7da9e613","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u56DB\u3001 \u5BE9\u67E5_34","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u56DB\u3001 \u5BE9\u67E5_34"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0034.pdf","page":34,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0034.png","sortOrder":38},{"id":"855e9ac280ae4006bfb14f9c845085aa","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E94\u3001 \u7279\u6B8A\u8A66\u5834_35","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E94\u3001 \u7279\u6B8A\u8A66\u5834_35"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0035.pdf","page":35,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0035.png","sortOrder":39},{"id":"fa7a9d7b3ef047e28a5e052e51f3eebd","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u516D\u3001 \u5176\u4ED6\u6CE8\u610F\u4E8B\u9805_35","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u634C\u3001\u8EAB\u5FC3\u969C\u7919\u53CA\u91CD\u5927\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u516D\u3001 \u5176\u4ED6\u6CE8\u610F\u4E8B\u9805_35"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0035_1.pdf","page":35,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0035_1.png","sortOrder":40},{"id":"e321e678636d4ba590df7cab4e3c70de","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E00\u3001 \u4E00\u5F8B\u4E0D\u4E88\u5EF6\u9577\u8003\u8A66\u6642\u9593\u3002_36","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E00\u3001 \u4E00\u5F8B\u4E0D\u4E88\u5EF6\u9577\u8003\u8A66\u6642\u9593\u3002_36"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036.pdf","page":36,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036.png","sortOrder":41},{"id":"9316218b59a04915b9a647f188b6ef7c","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E8C\u3001 \u61C9\u8003\u670D\u52D9\u9805\u76EE\uFF1A\u8003\u751F\u5F97\u8996\u5176\u9700\u8981\uFF0C\u7531\u4E0B\u5217\u61C9\u8003\u670D\u52D9\u9805\u76EE\u4E2D\uFF0C\u7533\u8ACB\u4E00\u6216\u591A\u7A2E\u65B9\u5F0F\uFF0C\u7D93\u672C\u6703\u6216\u8003\u5340\u5BE9\u67E5\u5F8C\u63D0\u4F9B\u3002_36","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E8C\u3001 \u61C9\u8003\u670D\u52D9\u9805\u76EE\uFF1A\u8003\u751F\u5F97\u8996\u5176\u9700\u8981\uFF0C\u7531\u4E0B\u5217\u61C9\u8003\u670D\u52D9\u9805\u76EE\u4E2D\uFF0C\u7533\u8ACB\u4E00\u6216\u591A\u7A2E\u65B9\u5F0F\uFF0C\u7D93\u672C\u6703\u6216\u8003\u5340\u5BE9\u67E5\u5F8C\u63D0\u4F9B\u3002_36"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036_1.pdf","page":36,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036_1.png","sortOrder":42},{"id":"268cf78cc7be464f8bf1b694409bd933","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9 :: \u4E09\u3001 \u7533\u8ACB\u65B9\u5F0F\u8207\u53D7\u7406\u671F\u9593\uFF1A \u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9\u53D7\u7406\u7533\u8ACB\u65E5\u671F\u5982\u4E0B\u8868\uFF1A_36","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u7396\u3001\u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9","\u4E09\u3001 \u7533\u8ACB\u65B9\u5F0F\u8207\u53D7\u7406\u671F\u9593\uFF1A \u7A81\u767C\u50B7\u75C5\u8003\u751F\u61C9\u8003\u670D\u52D9\u53D7\u7406\u7533\u8ACB\u65E5\u671F\u5982\u4E0B\u8868\uFF1A_36"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036_2.pdf","page":36,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0036_2.png","sortOrder":43},{"id":"d2ac07e6ad2e476c8f182d12896686de","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u3001\u516C\u5E03\u8A66\u984C\u53CA\u9078\u64C7\uFF08\u586B\uFF09\u984C\u7B54\u6848_37","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u3001\u516C\u5E03\u8A66\u984C\u53CA\u9078\u64C7\uFF08\u586B\uFF09\u984C\u7B54\u6848_37"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0037.pdf","page":37,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0037.png","sortOrder":44},{"id":"90fcaecfe0844cd383f80f31e699de6c","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_38","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_38"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0038.pdf","page":38,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0038.png","sortOrder":45},{"id":"7edfc92ed27a4ea5a1ccafd092beedf6","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_39","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_39"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0039.pdf","page":39,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0039.png","sortOrder":46},{"id":"4e1b769b3c964a31910fafed2129bb48","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_40","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u58F9\u3001\u6210\u7E3E\u516C\u5E03\u8207\u4F7F\u7528_40"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0040.pdf","page":40,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0040.png","sortOrder":47},{"id":"28ded617b24c4902b966485b165dd308","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u4E00\u3001 \u6210\u7E3E\u8907\u67E5\u7533\u8ACB\u65E5\u671F\u5982\u4E0B\u8868\uFF1A_41","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u4E00\u3001 \u6210\u7E3E\u8907\u67E5\u7533\u8ACB\u65E5\u671F\u5982\u4E0B\u8868\uFF1A_41"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041.pdf","page":41,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041.png","sortOrder":48},{"id":"a4a32a2e12034c719a917dbac411608c","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u4E8C\u3001 \u7533\u8ACB\u65B9\u5F0F\uFF1A_41","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u4E8C\u3001 \u7533\u8ACB\u65B9\u5F0F\uFF1A_41"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_1.pdf","page":41,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_1.png","sortOrder":49},{"id":"19baf4bbb8974508b0a78639f13c7e2f","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u4E09\u3001 \u8CBB\u7528\uFF1A\u6BCF\u7BC0\u6B21\u4F5C\u696D\u8CBB50\u5143\uFF0C\u6BCF\u751F\u90F5\u5BC4\u4F5C\u696D\u8CBB35\u5143\u3002_41","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u4E09\u3001 \u8CBB\u7528\uFF1A\u6BCF\u7BC0\u6B21\u4F5C\u696D\u8CBB50\u5143\uFF0C\u6BCF\u751F\u90F5\u5BC4\u4F5C\u696D\u8CBB35\u5143\u3002_41"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_2.pdf","page":41,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_2.png","sortOrder":50},{"id":"a8f0d4845a8c4ce581908bc70387dcce","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u56DB\u3001 \u7E73\u8CBB\u65B9\u5F0F\uFF1A_41","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u56DB\u3001 \u7E73\u8CBB\u65B9\u5F0F\uFF1A_41"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_3.pdf","page":41,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_3.png","sortOrder":51},{"id":"df0954038da140228039bc17b2414356","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u4E94\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_41","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u4E94\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_41"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_4.pdf","page":41,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0041_4.png","sortOrder":52},{"id":"032fb0f2a59b406cb999d0d4476c51c8","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u516D\u3001 \u6CE8\u610F\u4E8B\u9805\uFF1A_42","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u516D\u3001 \u6CE8\u610F\u4E8B\u9805\uFF1A_42"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0042.pdf","page":42,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0042.png","sortOrder":53},{"id":"1d33d167f1384045a497024f8b515819","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5 :: \u4E03\u3001 \u5C0D\u6210\u7E3E\u8907\u67E5\u7D50\u679C\u4ECD\u6709\u7591\u7FA9\u8005\uFF0C\u61C9\u4F9D\u7167\u672C\u7C21\u7AE0\u300C\u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34\u300D\u4E4B\u898F\u5B9A\uFF0C      \u63D0\u51FA\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34\u3002_42","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8CB3\u3001\u6210\u7E3E\u8907\u67E5","\u4E03\u3001 \u5C0D\u6210\u7E3E\u8907\u67E5\u7D50\u679C\u4ECD\u6709\u7591\u7FA9\u8005\uFF0C\u61C9\u4F9D\u7167\u672C\u7C21\u7AE0\u300C\u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34\u300D\u4E4B\u898F\u5B9A\uFF0C      \u63D0\u51FA\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34\u3002_42"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0042_1.pdf","page":42,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0042_1.png","sortOrder":54},{"id":"d4066a8937d6475aa6cbf5fd77407bee","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u53C1\u3001\u6210\u7E3E\u8B49\u660E\u7533\u8ACB_43","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u53C1\u3001\u6210\u7E3E\u8B49\u660E\u7533\u8ACB_43"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0043.pdf","page":43,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0043.png","sortOrder":55},{"id":"b2a7fca12ace492f92d5cbd025b6798d","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u53C1\u3001\u6210\u7E3E\u8B49\u660E\u7533\u8ACB_44","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u53C1\u3001\u6210\u7E3E\u8B49\u660E\u7533\u8ACB_44"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0044.pdf","page":44,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0044.png","sortOrder":56},{"id":"b978dfed233d4073bd65a00fd4034e19","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8086\u3001\u8A66\u52D9\u4F5C\u696D\u7533\u8A34 :: \u4E00\u3001 \u7A0B\u5E8F\u8981\u4EF6\uFF1A_45","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8086\u3001\u8A66\u52D9\u4F5C\u696D\u7533\u8A34","\u4E00\u3001 \u7A0B\u5E8F\u8981\u4EF6\uFF1A_45"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0045.pdf","page":45,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0045.png","sortOrder":57},{"id":"79ea38d82ed14d269205ffbebe8ab1ec","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u8086\u3001\u8A66\u52D9\u4F5C\u696D\u7533\u8A34 :: \u4E8C\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_45","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u8086\u3001\u8A66\u52D9\u4F5C\u696D\u7533\u8A34","\u4E8C\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_45"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0045_1.pdf","page":45,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0045_1.png","sortOrder":58},{"id":"6a8e5fa456f24b1fa293279806b204dc","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34 :: \u4E00\u3001 \u7A0B\u5E8F\u8981\u4EF6\uFF1A_46","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34","\u4E00\u3001 \u7A0B\u5E8F\u8981\u4EF6\uFF1A_46"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0046.pdf","page":46,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0046.png","sortOrder":59},{"id":"4aa3ccfb4b1b4a8182a9c07c921f72bd","title":"\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D :: \u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34 :: \u4E8C\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_46","breadcrumbs":["\u7B2C\u4E8C\u90E8\u5206 \u8003\u8A66\u8A66\u52D9\u4F5C\u696D","\u62FE\u4F0D\u3001\u6210\u7E3E\u8907\u67E5\u5F8C\u7533\u8A34","\u4E8C\u3001 \u8655\u7406\u65B9\u5F0F\uFF1A_46"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0046_1.pdf","page":46,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0046_1.png","sortOrder":60},{"id":"7a02476486d342d4b0888fe5a8959a65","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u4E00\u3001 \u4E00\u822C\u4E8B\u9805_47","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u4E00\u3001 \u4E00\u822C\u4E8B\u9805_47"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0047.pdf","page":47,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0047.png","sortOrder":61},{"id":"c54d82dc36d443938ee2e13adb0d8266","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u4E00\u3001 \u4E00\u822C\u4E8B\u9805_48","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u4E00\u3001 \u4E00\u822C\u4E8B\u9805_48"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0048.pdf","page":48,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0048.png","sortOrder":62},{"id":"b8c3239055eb48fa9a948ff923603507","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u4E8C\u3001 \u5165\u5834\u4E8B\u9805_49","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u4E8C\u3001 \u5165\u5834\u4E8B\u9805_49"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0049.pdf","page":49,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0049.png","sortOrder":63},{"id":"780e4d3cfe5f4cfcaf701d01a42dada0","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u4E8C\u3001 \u5165\u5834\u4E8B\u9805_50","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u4E8C\u3001 \u5165\u5834\u4E8B\u9805_50"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0050.pdf","page":50,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0050.png","sortOrder":64},{"id":"7bbfdbb2cee044058d59bdb2c9afcbdd","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u4E09\u3001 \u4F5C\u7B54\u4E8B\u9805_51","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u4E09\u3001 \u4F5C\u7B54\u4E8B\u9805_51"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0051.pdf","page":51,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0051.png","sortOrder":65},{"id":"6474cb4de45e43d1b1d6ac6b94807093","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u9678\u3001\u8A66\u5834\u898F\u5247 :: \u56DB\u3001 \u96E2\u5834\u53CA\u5176\u4ED6\u4E8B\u9805_52","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u9678\u3001\u8A66\u5834\u898F\u5247","\u56DB\u3001 \u96E2\u5834\u53CA\u5176\u4ED6\u4E8B\u9805_52"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0052.pdf","page":52,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0052.png","sortOrder":66},{"id":"e8f8651313c4483d8748c1512d46a948","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_53","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_53"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0053.pdf","page":53,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0053.png","sortOrder":67},{"id":"63335e52033d4c0b9b0377bbcc6b6b80","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_54","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_54"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0054.pdf","page":54,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0054.png","sortOrder":68},{"id":"6f12a66eaa4147ea9fbd3f47bcb16365","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_55","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_55"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0055.pdf","page":55,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0055.png","sortOrder":69},{"id":"cd75c8dd2b6f4df88d318b44aab81472","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_56","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_56"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0056.pdf","page":56,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0056.png","sortOrder":70},{"id":"69e401c2bf8840d198d1eaad932c7994","title":"\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5 :: \u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_57","breadcrumbs":["\u7B2C\u4E09\u90E8\u5206 \u8A66\u5834\u898F\u5247\u53CA\u9055\u898F\u8655\u7406\u8FA6\u6CD5","\u62FE\u67D2\u3001\u9055\u898F\u8655\u7406\u8FA6\u6CD5_57"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0057.pdf","page":57,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0057.png","sortOrder":71},{"id":"6811dd0a08b54bb48941821af8501c52","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E00\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u8FA6\u7406\u8A66\u52D9\u91CD\u5927\u4E8B\u6545\u61C9\u8B8A\u8FA6\u6CD5_58","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E00\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u8FA6\u7406\u8A66\u52D9\u91CD\u5927\u4E8B\u6545\u61C9\u8B8A\u8FA6\u6CD5_58"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0058.pdf","page":58,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0058.png","sortOrder":72},{"id":"aff6d89af69b465787e2feb650fefb2d","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E00\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u8FA6\u7406\u8A66\u52D9\u91CD\u5927\u4E8B\u6545\u61C9\u8B8A\u8FA6\u6CD5_59","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E00\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u8FA6\u7406\u8A66\u52D9\u91CD\u5927\u4E8B\u6545\u61C9\u8B8A\u8FA6\u6CD5_59"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0059.pdf","page":59,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0059.png","sortOrder":73},{"id":"d9e59568e04041dca768f1a87b23ec9d","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E8C\u3001\u82F1\u807D\u6210\u7E3E\u7B49\u7D1A\u8AAA\u660E_60","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E8C\u3001\u82F1\u807D\u6210\u7E3E\u7B49\u7D1A\u8AAA\u660E_60"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0060.pdf","page":60,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0060.png","sortOrder":74},{"id":"f29d313d689140198df6fbe14930f744","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E09\u3001\u570B\u5BEB\u6210\u7E3E\u8AAA\u660E_61","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E09\u3001\u570B\u5BEB\u6210\u7E3E\u8AAA\u660E_61"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0061.pdf","page":61,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0061.png","sortOrder":75},{"id":"cae10f876b1d44b8b8a36744ac0fedbe","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u56DB\u3001\u5165\u5B78\u5927\u5B78\u540C\u7B49\u5B78\u529B\u8A8D\u5B9A\u6A19\u6E96\u8CC7\u8A0A_62","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u56DB\u3001\u5165\u5B78\u5927\u5B78\u540C\u7B49\u5B78\u529B\u8A8D\u5B9A\u6A19\u6E96\u8CC7\u8A0A_62"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0062.pdf","page":62,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0062.png","sortOrder":76},{"id":"ebd013dc071a4d9b9901d3083ce50f2f","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u56DB\u3001\u5165\u5B78\u5927\u5B78\u540C\u7B49\u5B78\u529B\u8A8D\u5B9A\u6A19\u6E96\u8CC7\u8A0A_63","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u56DB\u3001\u5165\u5B78\u5927\u5B78\u540C\u7B49\u5B78\u529B\u8A8D\u5B9A\u6A19\u6E96\u8CC7\u8A0A_63"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0063.pdf","page":63,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0063.png","sortOrder":77},{"id":"95c3b1b13d7e44ca8bb0d8a91f87dba5","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E94\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u6E2C\u9A57\u670D\u52D9\u4E4B\u500B\u4EBA\u8CC7\u6599 \u8490\u96C6\u3001\u8655\u7406\u53CA\u5229\u7528\u544A\u77E5\u4E8B\u9805_64","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E94\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u6E2C\u9A57\u670D\u52D9\u4E4B\u500B\u4EBA\u8CC7\u6599 \u8490\u96C6\u3001\u8655\u7406\u53CA\u5229\u7528\u544A\u77E5\u4E8B\u9805_64"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0064.pdf","page":64,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0064.png","sortOrder":78},{"id":"94a825b5d415461494641138b2b9af5e","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E94\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u6E2C\u9A57\u670D\u52D9\u4E4B\u500B\u4EBA\u8CC7\u6599 \u8490\u96C6\u3001\u8655\u7406\u53CA\u5229\u7528\u544A\u77E5\u4E8B\u9805_65","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E94\u3001\u8CA1\u5718\u6CD5\u4EBA\u5927\u5B78\u5165\u5B78\u8003\u8A66\u4E2D\u5FC3\u57FA\u91D1\u6703\u6E2C\u9A57\u670D\u52D9\u4E4B\u500B\u4EBA\u8CC7\u6599 \u8490\u96C6\u3001\u8655\u7406\u53CA\u5229\u7528\u544A\u77E5\u4E8B\u9805_65"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0065.pdf","page":65,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0065.png","sortOrder":79},{"id":"7814937f80f344cc9596440238448424","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u516D\u3001\u7B54\u984C\u5377\u4F5C\u7B54\u63D0\u9192_66","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u516D\u3001\u7B54\u984C\u5377\u4F5C\u7B54\u63D0\u9192_66"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0066.pdf","page":66,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0066.png","sortOrder":80},{"id":"03c2eb7a434b4e2c9d432f2830ea8b28","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u516D\u3001\u7B54\u984C\u5377\u4F5C\u7B54\u63D0\u9192_67","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u516D\u3001\u7B54\u984C\u5377\u4F5C\u7B54\u63D0\u9192_67"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0067.pdf","page":67,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0067.png","sortOrder":81},{"id":"90228a4b597f47c19df53f3a29e36bdd","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E03\u3001\u7981\u6B62\u651C\u5E36\u5165\u5EA7\u5177\u50B3\u8F38\u3001\u901A\u8A0A\u3001\u8A18\u61B6\u3001\u62CD\u651D\u3001\u9304\u5F71\u6216\u8A08\u7B97\u529F\u80FD\u4E4B\u5E38\u898B\u6A23\u4F8B_68","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E03\u3001\u7981\u6B62\u651C\u5E36\u5165\u5EA7\u5177\u50B3\u8F38\u3001\u901A\u8A0A\u3001\u8A18\u61B6\u3001\u62CD\u651D\u3001\u9304\u5F71\u6216\u8A08\u7B97\u529F\u80FD\u4E4B\u5E38\u898B\u6A23\u4F8B_68"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0068.pdf","page":68,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0068.png","sortOrder":82},{"id":"af6b6e88df8c4670b38c39b1bcb50aa1","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u516B\u3001\u5E38\u898B\u4E0D\u53EF\u4F7F\u7528\u4E4B\u76F4\u5C3A\u6A23\u4F8B_69","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u516B\u3001\u5E38\u898B\u4E0D\u53EF\u4F7F\u7528\u4E4B\u76F4\u5C3A\u6A23\u4F8B_69"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0069.pdf","page":69,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0069.png","sortOrder":83},{"id":"c90bf924114148b58b42b405da71ca09","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_70","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_70"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0070.pdf","page":70,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0070.png","sortOrder":84},{"id":"4f82f821a0324baaa78e72180fc916c3","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_71","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_71"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0071.pdf","page":71,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0071.png","sortOrder":85},{"id":"58701492b71d4cc194b55a8b7b80f40b","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_72","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u4E5D\u3001\u8003\u751F\u7562\uFF08\u8084\uFF09\u696D\u5B78\u6821\u4EE3\u78BC\u8868_72"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0072.pdf","page":72,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0072.png","sortOrder":86},{"id":"d0e321fcd8df4388807732620a6be9f4","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_73","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_73"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0073.pdf","page":73,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0073.png","sortOrder":87},{"id":"4354b8a802554a129ca376c9fd805ced","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_74","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_74"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0074.pdf","page":74,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0074.png","sortOrder":88},{"id":"063cbab0e30047389ced9a9b5f9563a1","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_75","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_75"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0075.pdf","page":75,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0075.png","sortOrder":89},{"id":"31bb62db92cf4759833827acf6bdd8e5","title":"\u7B2C\u56DB\u90E8\u5206 \u9644\u9304 :: \u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_76","breadcrumbs":["\u7B2C\u56DB\u90E8\u5206 \u9644\u9304","\u9644\u9304\u5341\u3001\u8003\u8A66\u62DB\u751F\u76F8\u95DC\u8CC7\u8A0A_76"],"type":"Pdf","src":"assets/115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0076.pdf","page":76,"poster":"assets/thumb_115\u5B78\u5E74\u5EA6\u7C21\u7AE0_p0076.png","sortOrder":90}]}</script>
+
+    <script>
+        const TREE_INDENT = 18;
+        const TREE_LINE_BASE = 16;
+        const TREE_PARENT_BASE = 24;
+        const TREE_LEAF_BASE = 40;
+        const byId = id => document.getElementById(id);
+        let manifestRaw = '';
+        const manifestNode = byId('manifest');
+        if (manifestNode?.textContent) {
+            manifestRaw = manifestNode.textContent.trim();
+        }
+        let manifest;
+        try {
+            manifest = JSON.parse(manifestRaw || '{}');
+        } catch (err) {
+            console.warn('manifest 解析失敗，將改讀 manifest.json', err);
+            manifest = { title: '', items: [] };
+        }
+        const TITLE_DELIMITER = '::';
+        const TITLE_JOIN = ' :: ';
+
+        function parseSegments(title) {
+            return (title || '')
+                .split(TITLE_DELIMITER)
+                .map(part => part.trim())
+                .filter(Boolean);
+        }
+
+        function pathKeyFromLineage(lineage) {
+            return lineage.join(TITLE_JOIN);
+        }
+
+        function normalizeItems(rawItems) {
+            return (rawItems || []).map((rawItem, index) => {
+                const item = rawItem ?? {};
+                const fallback = `項目 ${index + 1}`;
+                const baseTitle = (item.title ?? '').toString().trim() || fallback;
+                const provided = Array.isArray(item.breadcrumbs) ? item.breadcrumbs : [];
+                const normalizedProvided = provided
+                    .map(part => (part ?? '').toString().trim())
+                    .filter(part => part.length > 0);
+                const lineage = (normalizedProvided.length ? normalizedProvided : parseSegments(baseTitle));
+                if (!lineage.length) { lineage.push(baseTitle); }
+                const displayTitle = lineage[lineage.length - 1];
+                const sortOrder = typeof item.sortOrder === 'number' ? item.sortOrder : index;
+                return {
+                    id: item.id || `item_${index + 1}`,
+                    title: baseTitle,
+                    displayTitle,
+                    lineage,
+                    type: (item.type || 'image').toLowerCase(),
+                    src: item.src,
+                    page: item.page || 1,
+                    poster: item.poster,
+                    thumbnail: item.thumbnail,
+                    sortOrder
+                };
+            });
+        }
+
+        const state = {
+            items: normalizeItems(manifest.items),
+            active: null, viewMode: 'list'
+        };
+        const treeState = {
+            expanded: new Set()   // 只保留個別節點展開狀態
+        };
+
+        function rebuildTreeExpansion() {
+            treeState.expanded.clear();
+        }
+
+        rebuildTreeExpansion();
+
+        async function ensureItemsLoaded() {
+            if (state.items.length) {
+                return;
+            }
+            if (typeof fetch !== 'function') {
+                return;
+            }
+            try {
+                const response = await fetch('manifest.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    return;
+                }
+                const data = await response.json();
+                manifest.items = Array.isArray(data.items) ? data.items : [];
+                state.items = normalizeItems(manifest.items);
+                rebuildTreeExpansion();
+            } catch (err) {
+                console.warn('無法載入 manifest.json', err);
+            }
+        }
+        const menu = byId('menu'), menuGrid = byId('menu-grid'), viewer = byId('viewer');
+        const titleEl = byId('title'), search = byId('search'), openRaw = byId('openRaw');
+        const btnFirst = byId('btnFirst'), btnPrev = byId('btnPrev'), btnNext = byId('btnNext'), btnLast = byId('btnLast');
+        const pageInput = byId('pageInput'), btnGo = byId('btnGo'), pageTotal = byId('pageTotal'), pageStatus = byId('pageStatus');
+
+        let fitWidthPx = 0, zoom = loadZoom();
+        const MIN_ZOOM = 0.5, MAX_ZOOM = 3;
+        const zoomInBtn = byId('zoomIn'), zoomOutBtn = byId('zoomOut'), zoomResetBtn = byId('zoomReset'), zoomLabel = byId('zoomLabel');
+
+        function saveZoom() { try { localStorage.setItem('ebook_zoom', String(zoom)); } catch { } }
+        function loadZoom() { try { const v = parseFloat(localStorage.getItem('ebook_zoom')); if (Number.isFinite(v) && v >= MIN_ZOOM && v <= MAX_ZOOM) return v; } catch { } return 1; }
+
+        const brandTitle = byId('brand-title');
+        if (brandTitle) { brandTitle.textContent = manifest.title || '電子書匯出'; }
+        const templateChip = byId('template-chip');
+        if (templateChip) { templateChip.textContent = document.body?.dataset?.templateName || templateChip.textContent; }
+        const templateName = document.body?.dataset?.templateName || '電子書匯出';
+        document.title = manifest.title ? `${manifest.title}｜${templateName}` : templateName;
+
+        function badgeText(t) { return t === 'image' ? '圖片' : t === 'video' ? '影片' : t === 'html' ? 'HTML' : t.toUpperCase() }
+        function getIconSvg(t) {
+            switch (t) {
+                case 'image': return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-.48a.75.75 0 0 0-1.06 0l-5.18 5.181ZM15.75 6a.75.75 0 0 0 .75-.75v-.25a.75.75 0 0 0-1.5 0v.25c0 .414.336.75.75.75Z"/></svg>';
+                case 'video': return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3.5 2.75a.75.75 0 0 0-1.5 0v14.5a.75.75 0 0 0 1.5 0v-4.392l1.657 1.506A.75.75 0 0 0 6 14.25v-8.5a.75.75 0 0 0-1.157-.658L3.5 6.642V2.75Z"/><path d="M8.5 4.75a.75.75 0 0 0-1.5 0v10.5a.75.75 0 0 0 1.5 0V4.75Z"/><path d="M12.5 5.75a.75.75 0 0 0-1.5 0v8.5a.75.75 0 0 0 1.5 0V5.75Z"/><path d="M16.5 6.75a.75.75 0 0 0-1.5 0v6.5a.75.75 0 0 0 1.5 0v-6.5Z"/></svg>';
+                case 'pdf': return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-1.5 0V3.25A.75.75 0 0 1 5 2.5ZM8.5 4a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 0-1.5 0V4.75A.75.75 0 0 1 8.5 4Zm3.5.75a.75.75 0 0 0-1.5 0v9a.75.75 0 0 0 1.5 0v-9Z" clip-rule="evenodd"/><path d="M12.75 3.25a.75.75 0 0 1 .75-.75h.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25h-.5a.75.75 0 0 1-.75-.75V3.25Z"/></svg>';
+                case 'html': return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l-3 5 3 5"/><path d="M14 5l3 5-3 5"/><path d="M9.5 7l1.5 6"/></svg>';
+                default: return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4Zm10.5 5.75a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5Z" clip-rule="evenodd"/></svg>';
+            }
+        }
+
+        function currentIndex() { return state.active && Array.isArray(state.items) ? state.items.findIndex(x => x.id === state.active.id) : -1 }
+        function totalPages() { return Array.isArray(state.items) && state.items.length ? state.items.length : (Array.isArray(manifest.items) ? manifest.items.length : 0) }
+        function setIndex(i, fromUser = false) {
+            const t = totalPages(); if (!t) return;
+            const n = Math.min(t - 1, Math.max(0, i | 0));
+            const item = state.items[n]; if (!item) return;
+            state.active = item; renderSidebar(); renderContent();
+            history.replaceState(null, '', `#${encodeURIComponent(item.id)}`);
+            scrollActiveIntoView();
+            if (fromUser) { menu.querySelector(`button[data-id="${CSS.escape(item.id)}"]`)?.focus() }
+            updateBookPagerUI(); applyZoom(); saveZoom();
+        }
+        const goFirst = () => setIndex(0, true);
+        const goPrev = () => { const i = currentIndex(); if (i > 0) setIndex(i - 1, true); }
+        const goNext = () => { const i = currentIndex(); if (i < totalPages() - 1) setIndex(i + 1, true); }
+        const goLast = () => setIndex(totalPages() - 1, true);
+        function goToInput() { const v = Number(pageInput.value); if (!v || v < 1) return; setIndex(v - 1, true) }
+        function updateBookPagerUI() {
+            const t = totalPages(), i = currentIndex();
+            const hasPages = t > 0;
+            const displayIndex = (i >= 0 ? i : hasPages ? 0 : -1);
+            pageTotal.textContent = '/ ' + (hasPages ? t : '—');
+            pageInput.value = (displayIndex >= 0 ? (displayIndex + 1) : '');
+            btnFirst.disabled = btnPrev.disabled = (displayIndex <= 0);
+            btnNext.disabled = btnLast.disabled = (!hasPages || displayIndex >= t - 1);
+            pageStatus.textContent = (displayIndex >= 0 ? `第 ${displayIndex + 1} / ${t} 頁` : '第 — / — 頁');
+        }
+
+        function filterItems(keyword) {
+            const kw = (keyword || '').trim().toLowerCase();
+            if (!kw) return state.items;
+            return state.items.filter(it => {
+                const haystack = (it.title + ' ' + it.displayTitle + ' ' + it.lineage.join(' ')).toLowerCase();
+                return haystack.includes(kw);
+            });
+        }
+
+        function buildTree(items) {
+            const root = { title: null, children: new Map(), pathSegments: [] };
+            items.forEach(item => {
+                const segments = item.lineage.length ? item.lineage : [item.displayTitle];
+                let node = root;
+                segments.forEach((segment, index) => {
+                    if (!node.children.has(segment)) {
+                        node.children.set(segment, {
+                            title: segment,
+                            children: new Map(),
+                            pathSegments: [...(node.pathSegments || []), segment],
+                            items: []
+                        });
+                    }
+                    node = node.children.get(segment);
+                    if (index === segments.length - 1) {
+                        node.items.push(item);
+                    }
+                });
+            });
+            return root;
+        }
+
+        function renderTree(root, forceExpand) {
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+
+            tree.appendChild(renderTreeNodes(root, forceExpand, 0));
+            return tree;
+        }
+
+        function renderTreeNodes(node, forceExpand, depth) {
+            const list = document.createElement('ul');
+            list.className = 'tree-list';
+
+            for (const child of node.children.values()) {
+                const li = document.createElement('li');
+                li.className = 'tree-node';
+
+                const pathSegments = child.pathSegments;
+                const pathKey = pathKeyFromLineage(pathSegments);
+                const hasChildren = child.children.size > 0;
+                const items = child.items || [];
+                const level = pathSegments.length; // 第一層=1、第二層=2 ...
+
+                // 只在「搜尋時」用 forceExpand，其餘用 expanded set
+                const expanded = forceExpand || (hasChildren && treeState.expanded.has(pathKey));
+
+                if (hasChildren) {
+                    const row = document.createElement('div');
+                    row.className = 'tree-group-row';
+
+                    // 父節點縮排：基準 24px + 每層多 16px
+                    const parentIndent = 24 + (level - 1) * 16;
+                    row.style.paddingLeft = parentIndent + 'px';
+
+                    const toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'tree-toggle';
+                    const span = document.createElement('span');
+                    span.textContent = expanded ? '▾' : '▸';
+                    toggle.appendChild(span);
+                    toggle.setAttribute('aria-label', '切換節點');
+                    toggle.addEventListener('click', ev => {
+                        ev.stopPropagation();
+                        if (treeState.expanded.has(pathKey)) {
+                            treeState.expanded.delete(pathKey);
+                        } else {
+                            treeState.expanded.add(pathKey);
+                        }
+                        renderSidebar();
+                    });
+                    row.appendChild(toggle);
+
+                    const label = document.createElement('span');
+                    label.className = 'tree-label';
+                    label.textContent = child.title;
+                    row.appendChild(label);
+
+                    row.addEventListener('click', ev => {
+                        if (ev.target instanceof HTMLButtonElement) return;
+                        toggle.click();
+                    });
+
+                    li.appendChild(row);
+
+                    if (expanded) {
+                        if (items.length) {
+                            const leaves = document.createElement('ul');
+                            leaves.className = 'tree-list tree-leaves';
+                            items.forEach(item => {
+                                // 葉節點層級 = 父層 + 1
+                                leaves.appendChild(createLeafNode(item, level + 1));
+                            });
+                            li.appendChild(leaves);
+                        }
+
+                        const subtree = renderTreeNodes(child, forceExpand, level + 1);
+                        if (subtree.childElementCount > 0) {
+                            li.appendChild(subtree);
+                        }
+                    }
+                } else if (items.length) {
+                    const leaves = document.createElement('ul');
+                    leaves.className = 'tree-list tree-leaves';
+                    items.forEach(item => {
+                        leaves.appendChild(createLeafNode(item, level || 1));
+                    });
+                    li.appendChild(leaves);
+                }
+
+                list.appendChild(li);
+            }
+
+            return list;
+        }
+
+
+        function createLeafNode(item, depth) {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'tree-leaf';
+            btn.dataset.id = item.id;
+
+            const level = Math.max(1, depth || 1);
+
+            // 葉節點縮排：基準 40px + 每層多 16px
+            // 例：level=2 → 40 + (2-1)*16 = 56px，比父節點明顯往右
+            const leafIndent = 40 + (level - 1) * 16;
+            btn.style.paddingLeft = leafIndent + 'px';
+
+            const label = document.createElement('span');
+            label.className = 'tree-label';
+            label.textContent = item.displayTitle;
+
+            const badge = document.createElement('span');
+            badge.className = 'badge';
+            badge.textContent = badgeText(item.type);
+
+            btn.append(label, badge);
+
+            if (state.active?.id === item.id) btn.classList.add('active');
+
+            btn.addEventListener('click', () => {
+                const idx = state.items.findIndex(x => x.id === item.id);
+                if (idx >= 0) { setIndex(idx, true); }
+            });
+
+            li.appendChild(btn);
+            return li;
+        }
+
+
+        function renderSidebar() {
+            if (state.viewMode === 'list') { menu.style.display = 'block'; menuGrid.style.display = 'none'; renderList(); }
+            else { menu.style.display = 'none'; menuGrid.style.display = 'grid'; renderGrid(); }
+            scrollActiveIntoView();
+        }
+        function renderList() {
+            menu.innerHTML = '';
+            const keyword = (search.value || '');
+            const list = filterItems(keyword);
+            if (!list.length) {
+                const d = document.createElement('div'); d.className = 'hint'; d.textContent = '沒有符合的內容';
+                menu.appendChild(d);
+                return;
+            }
+            const treeRoot = buildTree(list);
+            const tree = renderTree(treeRoot, Boolean((keyword || '').trim()));
+            menu.appendChild(tree);
+        }
+        function renderGrid() {
+            menuGrid.innerHTML = '';
+            const list = filterItems(search.value || '');
+            if (!list.length) {
+                const d = document.createElement('div'); d.className = 'hint'; d.textContent = '沒有符合的內容';
+                menuGrid.appendChild(d);
+                return;
+            }
+            list.forEach(it => {
+                const a = document.createElement('a'); a.href = '#' + encodeURIComponent(it.id); a.className = 'grid-item'; a.dataset.id = it.id;
+                if (state.active?.id === it.id) a.classList.add('active');
+                const thumb = document.createElement('div'); thumb.className = 'grid-thumb';
+                const imgSrc = it.thumbnail || (it.type === 'image' ? it.src : (it.type === 'video' || it.type === 'pdf' || it.type === 'html' ? it.poster : null));
+                if (imgSrc) {
+                    const img = document.createElement('img');
+                    img.src = imgSrc;
+                    img.alt = it.title;
+                    img.loading = 'lazy';
+                    thumb.appendChild(img);
+                } else {
+                    thumb.insertAdjacentHTML('beforeend', getIconSvg(it.type));
+                }
+                const tt = document.createElement('div'); tt.className = 'grid-title'; tt.textContent = it.title;
+                a.appendChild(thumb); a.appendChild(tt);
+                a.addEventListener('click', e => { e.preventDefault(); const idx = state.items.findIndex(x => x.id === it.id); if (idx >= 0) setIndex(idx, true); });
+                menuGrid.appendChild(a);
+            });
+        }
+        function scrollActiveIntoView() {
+            const el = state.viewMode === 'list' ? menu.querySelector('.active') : menuGrid.querySelector('.active');
+            el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+
+        function renderContent() {
+            viewer.innerHTML = '';
+            const item = state.active;
+            const page = document.createElement('div'); page.className = 'page page-enter';
+            page.addEventListener('animationend', () => page.classList.remove('page-enter'));
+            viewer.appendChild(page);
+
+            viewer.classList.remove('align-top'); page.classList.remove('image-mode', 'video-mode');
+
+            if (!item) {
+                titleEl.textContent = '請選擇內容'; openRaw.href = '#';
+                const ph = document.createElement('div'); ph.className = 'page-placeholder'; ph.textContent = '尚未選取任何內容';
+                page.appendChild(ph); fitPageToViewer(); return;
+            }
+
+            titleEl.textContent = item.title; openRaw.href = item.src;
+
+            if (item.type === 'image') {
+                page.classList.add('image-mode');
+
+                const img = new Image();
+                img.src = item.src;
+                img.alt = item.title;
+                img.className = 'page-media';
+
+                img.addEventListener('click', () => {
+                    page.classList.toggle('image-full');
+                    fitPageToViewer();
+                    applyZoom();
+                });
+
+                page.appendChild(img);
+            } else if (item.type === 'video') {
+                viewer.classList.add('align-top');
+                page.classList.add('video-mode');
+                const video = document.createElement('video');
+                video.controls = true; video.playsInline = true; video.className = 'page-media';
+                if (item.poster) video.poster = item.poster;
+                const src = document.createElement('source'); src.src = item.src; src.type = guessMime(item.src);
+                video.appendChild(src); page.appendChild(video); video.play().catch(() => { });
+            } else if (item.type === 'pdf') {
+                const iframe = document.createElement('iframe');
+                // �� ���� #page=...�A�u�O�d��l src
+                iframe.src = item.src;
+                iframe.title = item.title;
+                iframe.className = 'page-media';
+                page.appendChild(iframe);
+                //const iframe = document.createElement('iframe');
+                //iframe.src = `${item.src}#page=${item.page || 1}&view=FitH`; iframe.title = item.title; iframe.className = 'page-media';
+                //page.appendChild(iframe);
+            } else if (item.type === 'html') {
+
+                const iframe = document.createElement('iframe');
+                iframe.title = item.title;
+                iframe.className = 'page-media';
+                iframe.loading = 'lazy';
+                iframe.style.background = 'transparent';
+                iframe.setAttribute('referrerpolicy', 'no-referrer');
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+
+                const useSrcdoc = typeof item.inlineHtml === 'string' && item.inlineHtml.trim();
+
+                if (useSrcdoc) {
+                    iframe.srcdoc = injectCoverSafeCss(item.inlineHtml);
+                } else if (typeof item.src === 'string' && item.src.startsWith('data:text/html')) {
+                    const html = decodeHtmlDataUrl(item.src);
+                    iframe.srcdoc = injectCoverSafeCss(html);
+                } else if (item.src) {
+                    iframe.src = item.src;
+                } else {
+                    const fb = document.createElement('div');
+                    fb.className = 'page-placeholder';
+                    fb.textContent = '無有效的 HTML 來源';
+                    page.appendChild(fb);
+                    return;
+                }
+
+                page.appendChild(iframe);
+            } else {
+                const fb = document.createElement('div'); fb.className = 'page-placeholder'; fb.textContent = `無法預覽的類型：${item.type}`;
+                page.appendChild(fb);
+            }
+
+            fitPageToViewer(); applyZoom();
+        }
+
+
+        function getPageElement() { return viewer.querySelector('.page'); }
+        function calcFitWidth() {
+            if (!viewer) return 0;
+            const style = window.getComputedStyle(viewer);
+            const padX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+            const available = Math.max(1, viewer.clientWidth - padX);
+            const page = getPageElement();
+            if (!page) return available;
+            const pageStyle = window.getComputedStyle(page);
+            const innerPad = (parseFloat(pageStyle.paddingLeft) || 0) + (parseFloat(pageStyle.paddingRight) || 0);
+            return Math.max(1, available - innerPad);
+        }
+        function guessMime(url) {
+            const ext = (url.split('.').pop() || '').toLowerCase();
+            if (ext === 'mp4') return 'video/mp4';
+            if (ext === 'webm') return 'video/webm';
+            if (ext === 'ogg' || ext === 'ogv') return 'video/ogg';
+            return 'video/mp4';
+        }
+
+        function applyZoom() {
+            const page = getPageElement();
+            if (!page) return;
+
+            const isImage = state.active?.type === 'image';
+            const isVideo = state.active?.type === 'video';
+
+            if (isImage) {
+                const isFull = page.classList.contains('image-full');
+
+                if (isFull) {
+                    const viewerStyle = window.getComputedStyle(viewer);
+                    const pX = parseFloat(viewerStyle.paddingLeft) + parseFloat(viewerStyle.paddingRight);
+                    const pY = parseFloat(viewerStyle.paddingTop) + parseFloat(viewerStyle.paddingBottom);
+
+                    const availableWidth = viewer.clientWidth - pX;
+                    const availableHeight = viewer.clientHeight - pY;
+
+                    const w = Math.max(1, Math.round(availableWidth * zoom));
+                    const h = Math.max(1, Math.round(availableHeight * zoom));
+
+                    page.style.width = w + 'px';
+                    page.style.height = h + 'px';
+                } else {
+                    const w = Math.max(1, Math.round(fitWidthPx * zoom));
+                    page.style.width = w + 'px';
+                    page.style.height = '';
+                }
+            } else if (isVideo) {
+                // 影片模式：不縮放，交給 CSS / 原始大小處理
+                page.style.width = '';
+                page.style.height = '';
+                zoomLabel.textContent = Math.round(zoom * 100) + '%';
+            } else {
+                const w = Math.max(1, Math.round(fitWidthPx * zoom));
+                page.style.width = w + 'px';
+                page.style.height = '';
+            }
+
+            zoomLabel.textContent = Math.round(zoom * 100) + '%';
+        }
+
+        function fitPageToViewer() { fitWidthPx = calcFitWidth() }
+        window.addEventListener('resize', () => { fitPageToViewer(); applyZoom(); saveZoom() })
+
+        zoomInBtn.addEventListener('click', () => { zoom = Math.min(MAX_ZOOM, Math.round((zoom * 1.25) * 100) / 100); applyZoom(); saveZoom() })
+        zoomOutBtn.addEventListener('click', () => { zoom = Math.max(MIN_ZOOM, Math.round((zoom / 1.25) * 100) / 100); applyZoom(); saveZoom() })
+        zoomResetBtn.addEventListener('click', () => { zoom = 1; applyZoom(); saveZoom() })
+
+        btnFirst.addEventListener('click', goFirst);
+        btnPrev.addEventListener('click', goPrev);
+        btnNext.addEventListener('click', goNext);
+        btnLast.addEventListener('click', goLast);
+        btnGo.addEventListener('click', goToInput);
+        pageInput.addEventListener('keydown', e => { if (e.key === 'Enter') goToInput() });
+
+        search.addEventListener('input', () => renderSidebar());
+
+        const viewListBtn = byId('view-list-btn'), viewGridBtn = byId('view-grid-btn');
+        viewListBtn.addEventListener('click', () => { state.viewMode = 'list'; viewListBtn.classList.add('active'); viewGridBtn.classList.remove('active'); renderSidebar() });
+        viewGridBtn.addEventListener('click', () => { state.viewMode = 'grid'; viewGridBtn.classList.add('active'); viewListBtn.classList.remove('active'); renderSidebar() });
+
+        window.addEventListener('keydown', e => {
+            const entries = Array.from(menu.querySelectorAll('button[data-id]'));
+            const idx = currentIndex();
+            if (e.key === 'ArrowDown') { e.preventDefault(); entries[Math.min((idx < 0 ? 0 : idx) + 1, entries.length - 1)]?.focus(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); entries[Math.max((idx < 0 ? 0 : idx) - 1, 0)]?.focus(); }
+            else if (e.key === 'Enter' && document.activeElement?.dataset?.id) {
+                const id = document.activeElement.dataset.id;
+                const i = state.items.findIndex(x => x.id === id);
+                setIndex(i, true);
+            } else if (e.key === 'PageDown') { e.preventDefault(); goNext(); }
+            else if (e.key === 'PageUp') { e.preventDefault(); goPrev(); }
+        });
+
+        (async function boot() {
+            await ensureItemsLoaded();
+            renderSidebar();
+            const hashId = decodeURIComponent(location.hash.replace('#', ''));
+            if (state.items.length) {
+                if (hashId) {
+                    const i = state.items.findIndex(x => x.id === hashId);
+                    if (i >= 0) { setIndex(i); } else { setIndex(0); }
+                } else {
+                    setIndex(0);
+                }
+            }
+            updateBookPagerUI(); fitPageToViewer(); applyZoom(); saveZoom(); scrollActiveIntoView();
+        })();
+
+        function injectCoverSafeCss(html) {
+            try {
+                const safeCss = `<style>html,body{margin:0;height:100%;background:transparent}</style>`;
+                if (/<head[\s>]/i.test(html)) {
+                    return html.replace(/<head([\s>])/i, `<head$1${safeCss}`);
+                }
+                if (/<html[\s>]/i.test(html)) {
+                    return html.replace(/<html([\s>])/i, `<html$1<head>${safeCss}</head>`);
+                }
+                return `${safeCss}${html}`;
+            } catch { return html; }
+        }
+
+        function decodeHtmlDataUrl(dataUrl) {
+            try {
+                const m = dataUrl.match(/^data:text\/html(?:;charset=[^;,]+)?(?:;(base64))?,(.*)$/i);
+                if (!m) return '';
+                const isB64 = !!m[1];
+                const payload = m[2] || '';
+                if (isB64) {
+                    return new TextDecoder().decode(Uint8Array.from(atob(payload), c => c.charCodeAt(0)));
+                }
+                return decodeURIComponent(payload.replace(/\+/g, '%20'));
+            } catch { return ''; }
+        }
+    </script>
+
+    <!-- ====================== 新增：回到頂部浮動鈕 ====================== -->
+    <style>
+        .backtop {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            width: 44px;
+            height: 44px;
+            border: 0;
+            border-radius: 999px;
+            background: var(--accent, #007bff);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,.15);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
+            z-index: 2147483000;
+        }
+
+            .backtop:hover {
+                box-shadow: 0 10px 26px rgba(0,0,0,.2);
+            }
+
+            .backtop:focus-visible {
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(0,123,255,.25), 0 8px 20px rgba(0,0,0,.15);
+            }
+
+            .backtop.show {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
+            }
+
+        @media (prefers-reduced-motion: reduce) {
+            .backtop {
+                transition: none;
+            }
+        }
+    </style>
+
+    <script>
+        (function () {
+            const viewer = document.getElementById('viewer');
+            if (!viewer) return;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'backtop';
+            btn.title = '回到頂部';
+            btn.setAttribute('aria-label', '回到頂部');
+            btn.innerHTML =
+                '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" aria-hidden="true">' +
+                '<path fill-rule="evenodd" d="M10 3a.75.75 0 0 1 .53.22l5.25 5.25a.75.75 0 1 1-1.06 1.06L10.75 5.59V16a.75.75 0 0 1-1.5 0V5.59L5.28 9.53a.75.75 0 1 1-1.06-1.06L9.47 3.22A.75.75 0 0 1 10 3Z" clip-rule="evenodd"/>' +
+                '</svg>';
+            document.body.appendChild(btn);
+
+            const THRESHOLD = 100;
+
+            function getActiveIframe() {
+                return viewer.querySelector('.page iframe.page-media') || null;
+            }
+
+            function canScrollViewer() {
+                return viewer.scrollHeight > viewer.clientHeight + 2;
+            }
+
+            function winScrollTop() {
+                return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            }
+
+            function iframeScrollTop(iframe) {
+                try {
+                    if (!iframe || !iframe.contentWindow || !iframe.contentDocument) return 0;
+                    const doc = iframe.contentDocument;
+                    return doc.scrollingElement ? doc.scrollingElement.scrollTop : iframe.contentWindow.pageYOffset || 0;
+                } catch (e) {
+                    return 0;
+                }
+            }
+
+            function iframeCanScroll(iframe) {
+                try {
+                    if (!iframe || !iframe.contentDocument) return false;
+                    const el = iframe.contentDocument.scrollingElement;
+                    return !!el && el.scrollHeight > el.clientHeight + 2;
+                } catch {
+                    return false;
+                }
+            }
+
+            function refreshVisibility() {
+                const vCan = canScrollViewer();
+                const vTop = viewer.scrollTop;
+
+                const wTop = winScrollTop();
+
+                const ifr = getActiveIframe();
+                const iCan = iframeCanScroll(ifr);
+                const iTop = iframeScrollTop(ifr);
+
+                const needAny =
+                    (vCan && vTop > THRESHOLD) ||
+                    (iCan && iTop > THRESHOLD) ||
+                    (!vCan && !iCan && wTop > THRESHOLD);
+
+                btn.classList.toggle('show', needAny);
+            }
+
+            btn.addEventListener('click', function () {
+                const ifr = getActiveIframe();
+                if (iframeScrollTop(ifr) > 0) {
+                    try {
+                        const el = ifr.contentDocument.scrollingElement || ifr.contentDocument.body;
+                        el.scrollTo({ top: 0, behavior: 'smooth' });
+                        return;
+                    } catch { }
+                }
+
+                if (viewer.scrollTop > 0) {
+                    viewer.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            viewer.addEventListener('scroll', refreshVisibility, { passive: true });
+            window.addEventListener('scroll', refreshVisibility, { passive: true });
+
+            const mo = new MutationObserver(refreshVisibility);
+            mo.observe(viewer, { childList: true, subtree: true });
+
+            function hookIframeIfPossible() {
+                const ifr = getActiveIframe();
+                if (!ifr) return;
+                try {
+                    ifr.addEventListener('load', () => {
+                        try {
+                            ifr.contentWindow.addEventListener('scroll', refreshVisibility, { passive: true });
+                        } catch { }
+                        refreshVisibility();
+                    });
+                    if (ifr.contentDocument && ifr.contentDocument.readyState === 'complete') {
+                        try {
+                            ifr.contentWindow.addEventListener('scroll', refreshVisibility, { passive: true });
+                        } catch { }
+                    }
+                } catch { }
+            }
+            hookIframeIfPossible();
+
+            window.addEventListener('resize', refreshVisibility);
+            if (typeof ResizeObserver === 'function') {
+                const ro1 = new ResizeObserver(refreshVisibility);
+                ro1.observe(viewer);
+            }
+
+            window.addEventListener('wheel', refreshVisibility, { passive: true });
+
+            refreshVisibility();
+        })();
+
+        (function () {
+            const viewer = document.getElementById('viewer');
+            if (!viewer) return;
+
+            function scrollToTopAnywhere(behavior = 'smooth') {
+                const opts = { top: 0, behavior };
+                const ifr = viewer.querySelector('.page iframe.page-media');
+                try {
+                    if (ifr && ifr.contentDocument) {
+                        const el = ifr.contentDocument.scrollingElement || ifr.contentDocument.documentElement || ifr.contentDocument.body;
+                        el && el.scrollTo(opts);
+                    }
+                } catch { }
+                viewer.scrollTo(opts);
+                window.scrollTo(opts);
+            }
+
+            const mo = new MutationObserver(() => scrollToTopAnywhere('smooth'));
+            mo.observe(viewer, { childList: true, subtree: true });
+
+            const menu = document.getElementById('menu');
+            const menuGrid = document.getElementById('menu-grid');
+
+            menu && menu.addEventListener('click', (e) => {
+                const leafBtn = e.target && e.target.closest('button[data-id]');
+                if (leafBtn) setTimeout(() => scrollToTopAnywhere('smooth'), 0);
+            });
+
+            menuGrid && menuGrid.addEventListener('click', (e) => {
+                const gridItem = e.target && e.target.closest('a.grid-item');
+                if (gridItem) setTimeout(() => scrollToTopAnywhere('smooth'), 0);
+            });
+        })();
+        const btnExpandAll = byId('treeExpandAll');
+        const btnCollapseAll = byId('treeCollapseAll');
+
+        if (btnExpandAll) {
+            btnExpandAll.addEventListener('click', () => {
+                // 依目前「過濾後」的 items 建一棵樹，將所有有 children 的節點加入 expanded
+                treeState.expanded.clear();
+
+                const list = filterItems(search.value || '');
+                const root = buildTree(list);
+
+                (function collect(node) {
+                    for (const child of node.children.values()) {
+                        const pathKey = pathKeyFromLineage(child.pathSegments);
+                        treeState.expanded.add(pathKey);
+                        collect(child);
+                    }
+                })(root);
+
+                renderSidebar();
+            });
+        }
+
+        if (btnCollapseAll) {
+            btnCollapseAll.addEventListener('click', () => {
+                treeState.expanded.clear();
+                renderSidebar();
+            });
+        }
+
+        // ========= 縮圖模式：滑過顯示大圖預覽（DOM 版，完全不依賴 state） =========
+        (function () {
+            const grid = document.getElementById('menu-grid');
+            if (!grid) return;
+
+            const preview = document.createElement('div');
+            preview.id = 'thumb-preview';
+            Object.assign(preview.style, {
+                position: 'fixed',
+                zIndex: '2147483000',
+                pointerEvents: 'none',
+                padding: '4px',
+                background: '#fff',
+                border: '1px solid #ccc',
+                borderRadius: '6px',
+                boxShadow: '0 4px 16px rgba(0,0,0,.2)',
+                display: 'none',
+                maxWidth: '100%',
+                maxHeight: '100%'
+            });
+
+            const img = document.createElement('img');
+            img.id = 'thumb-preview-img';
+            Object.assign(img.style, {
+                display: 'block',
+                maxWidth: '100%',
+                maxHeight: '100%'
+            });
+
+            preview.appendChild(img);
+            document.body.appendChild(preview);
+
+            const OFFSET = 20;
+
+            function showPreview(e, src) {
+                img.src = src;
+                preview.style.display = 'block';
+                movePreview(e);
+            }
+
+            function hidePreview() {
+                preview.style.display = 'none';
+                img.src = '';
+            }
+
+            function movePreview(e) {
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+
+                const prevDisplay = preview.style.display;
+                if (prevDisplay === 'none') {
+                    preview.style.display = 'block';
+                }
+                const rect = preview.getBoundingClientRect();
+                if (prevDisplay === 'none') {
+                    preview.style.display = prevDisplay;
+                }
+
+                let x = e.clientX + OFFSET;
+                let y = e.clientY + OFFSET;
+
+                if (x + rect.width > vw) {
+                    x = e.clientX - OFFSET - rect.width;
+                }
+                if (y + rect.height > vh) {
+                    y = e.clientY - OFFSET - rect.height;
+                }
+
+                preview.style.left = x + 'px';
+                preview.style.top = y + 'px';
+            }
+
+            function getImageSrcFromEvent(e) {
+                const itemEl = e.target.closest('.grid-item');
+                if (!itemEl) return null;
+
+                const imgEl = itemEl.querySelector('.grid-thumb img');
+                if (imgEl && imgEl.src) return imgEl.src;
+
+                return null;
+            }
+
+            // 滑動時只負責更新位置
+            grid.addEventListener('mousemove', function (e) {
+                if (preview.style.display === 'block') {
+                    movePreview(e);
+                }
+            });
+
+            // 關鍵修改：沒有縮圖時要清掉預覽，不保留上一張
+            grid.addEventListener('mouseover', function (e) {
+                const src = getImageSrcFromEvent(e);
+                if (!src) {
+                    hidePreview();
+                    return;
+                }
+                showPreview(e, src);
+            });
+
+            grid.addEventListener('mouseleave', function () {
+                hidePreview();
+            });
+        })();
+
+        (function () {
+            const splitter = document.getElementById('sidebar-splitter');
+            const sidebar = document.querySelector('.sidebar');
+            if (!splitter || !sidebar) return;
+
+            const MIN_WIDTH = 220;   // 側欄最小寬度，可自行調整
+            const MAX_WIDTH = 640;   // 側欄最大寬度，可自行調整
+            const STORAGE_KEY = 'ebook_sidebar_width';
+
+            // 初始化：從 localStorage 還原寬度
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    document.documentElement.style.setProperty('--sidebar-width', saved);
+                }
+            } catch { }
+
+            let dragging = false;
+            let startX = 0;
+            let startWidth = 0;
+
+            function onMouseDown(e) {
+                // 只在桌機或寬螢幕情境啟用，窄螢幕由 CSS 已經隱藏 splitter
+                if (window.innerWidth <= 960) return;
+
+                dragging = true;
+                startX = e.clientX;
+                startWidth = sidebar.getBoundingClientRect().width;
+
+                document.body.classList.add('resizing-sidebar');
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+
+            function onMouseMove(e) {
+                if (!dragging) return;
+
+                const delta = e.clientX - startX;
+                let newWidth = startWidth + delta;
+                newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+
+                const value = newWidth + 'px';
+                document.documentElement.style.setProperty('--sidebar-width', value);
+            }
+
+            function onMouseUp() {
+                if (!dragging) return;
+                dragging = false;
+
+                document.body.classList.remove('resizing-sidebar');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+
+                // 儲存目前寬度
+                try {
+                    const current = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--sidebar-width')
+                        .trim();
+                    if (current) {
+                        localStorage.setItem(STORAGE_KEY, current);
+                    }
+                } catch { }
+            }
+
+            splitter.addEventListener('mousedown', onMouseDown);
+        })();
+    </script>
+    <!-- ====================== 新增結束 ====================== -->
+</body>
+</html>
