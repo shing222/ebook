@@ -6,19 +6,16 @@
     <title>電子書櫃</title>
     <style>
         :root {
-            --primary-bg-color: #f7f3ee;
+            --primary-bg-color: #eef2fb;
             --page-bg-color: #ffffff;
-            --header-grad-start: rgba(255,255,255,0.9);
-            --header-grad-end: rgba(255,255,255,0.2);
-            --title-bar-bg: #f6dede;
-            --title-bar-border: #e09a9a;
-            --main-title-color: #b1314a;
-            --shelf-grad-start: #f7e3c1;
-            --shelf-grad-end: #e2b885;
-            --shelf-title-color: #5c3a20;
-            --text-color: #333;
-            --text-light-color: #666;
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            --accent-soft: #0f6abf;
+            --border-soft: rgba(29, 47, 99, 0.25);
+            --text-color: #1f2633;
+            --text-light-color: #4c5672;
+            --shelf-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(234, 240, 250, 0.85));
+            --shelf-border: rgba(29, 47, 99, 0.15);
+            --shadow-color: rgba(17, 42, 91, 0.25);
+            --font-family: "Microsoft JhengHei", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         * {
@@ -26,256 +23,289 @@
             margin: 0;
             padding: 0;
         }
+
         body {
             font-family: var(--font-family);
-            background: var(--primary-bg-color);
             color: var(--text-color);
+            background: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.9), transparent 45%),
+                radial-gradient(circle at 80% 0%, rgba(15, 106, 191, 0.18), transparent 45%),
+                var(--primary-bg-color);
+            min-height: 100vh;
+            padding: 32px 16px 40px 16px;
         }
+
         .page {
             max-width: 1200px;
             margin: 0 auto;
             background: var(--page-bg-color);
-            box-shadow: 0 0 8px rgba(0,0,0,0.15);
+            border-radius: 28px;
+            border: 1px solid rgba(29, 47, 99, 0.08);
+            box-shadow:
+                0 12px 30px var(--shadow-color),
+                0 0 30px rgba(15, 106, 191, 0.15);
+            position: relative;
+            overflow: hidden;
         }
+
         .header-banner {
             position: relative;
             width: 100%;
             height: 220px;
-            background: url("images/banner-bg.jpg") center/cover no-repeat;
+            background: linear-gradient(135deg, #f5f7ff, #e4ecff 60%);
             overflow: hidden;
+            border-radius: 16px 16px 0 0;
         }
+
         .header-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(to right, var(--header-grad-start), var(--header-grad-end));
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
         }
+
         .header-content {
             position: relative;
             display: flex;
             align-items: center;
             height: 100%;
-            padding: 24px 40px;
-            gap: 24px;
+            padding: 24px 32px;
+            gap: 20px;
         }
+
         .header-mascot {
-            width: 140px;
+            width: 120px;
             flex-shrink: 0;
         }
+
         .header-mascot img {
             width: 100%;
             display: block;
         }
+
         .header-text {
             flex: 1;
         }
+
         .header-text .gov-name {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             margin-bottom: 4px;
         }
-        .header-text .gov-name-en {
-            font-size: 13px;
-            color: var(--text-light-color);
-            margin-bottom: 12px;
-        }
+
         .header-text .title-main {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             letter-spacing: 2px;
-            color: var(--main-title-color);
+            color: var(--text-color);
         }
+
         .header-logo {
-            width: 100px;
+            width: 90px;
             flex-shrink: 0;
             text-align: center;
         }
+
         .header-logo img {
-            width: 80px;
+            width: 70px;
             display: block;
             margin: 0 auto 6px;
         }
+
         .header-logo span {
             font-size: 13px;
             display: block;
         }
-        .bookshelf-title-bar {
-            background: var(--title-bar-bg);
-            border-top: 3px solid var(--title-bar-border);
-            border-bottom: 3px solid var(--title-bar-border);
-            padding: 10px 32px;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 3px;
+
+        main {
+            padding: 24px 32px 32px 32px;
+            position: relative;
         }
+
         .search-bar-container {
-            padding: 16px 32px;
-            background: #f0f0f0;
+            padding: 8px 0 16px 0;
         }
+
         #searchInput {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
+            padding: 12px 16px;
+            border: 1px solid var(--border-soft);
+            border-radius: 24px;
+            font-size: 15px;
+            outline: none;
+            background: #f7f8fc;
+            color: var(--text-color);
+            box-shadow: inset 0 4px 12px rgba(29, 47, 99, 0.08);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
+
+        #searchInput:focus {
+            border-color: var(--accent-soft);
+            box-shadow: 0 4px 16px rgba(15, 106, 191, 0.15);
+        }
+
         .bookshelf {
-            padding: 24px 32px 40px 32px;
+            padding: 8px 0 12px 0;
         }
+
         .shelf-row {
-            margin-bottom: 32px;
-            padding: 16px 18px 20px 18px;
-            background: linear-gradient(var(--shelf-grad-start), var(--shelf-grad-end));
-            border-radius: 12px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 3px 6px rgba(0,0,0,0.25);
+            margin-bottom: 26px;
+            padding: 18px;
+            background: var(--shelf-bg);
+            border-radius: 22px;
+            border: 1px solid var(--shelf-border);
+            box-shadow: 0 12px 25px rgba(15, 106, 191, 0.12);
+            position: relative;
+            overflow: hidden;
         }
+
         .shelf-row-title {
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 10px;
             color: var(--shelf-title-color);
         }
+
         .book-list {
             list-style: none;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
         }
+
         .book-item a {
             display: block;
             text-decoration: none;
             color: inherit;
-            transition: transform 0.2s ease-in-out;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-radius: 10px;
+            padding: 4px;
+            background: transparent;
         }
+
         .book-item a:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px rgba(29, 47, 99, 0.15);
         }
+
         .book-cover-wrap {
-            background: #fdfdfd;
-            border-radius: 4px;
+            background: #ffffff;
+            border-radius: 10px;
             padding: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
-            transition: box-shadow 0.2s ease-in-out;
+            border: 1px solid rgba(29, 47, 99, 0.15);
+            box-shadow: 0 8px 18px rgba(29, 47, 99, 0.08);
         }
-        .book-item a:hover .book-cover-wrap {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
+
         .book-cover {
             width: 100%;
-            aspect-ratio: 3/4;
+            aspect-ratio: 3 / 4;
             object-fit: cover;
             display: block;
+            border-radius: 4px;
         }
+
         .book-caption {
             margin-top: 8px;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
             line-height: 1.4;
             font-weight: 500;
         }
+
         .book-cover-placeholder {
             width: 100%;
-            aspect-ratio: 3/4;
-            background-color: #e9e9e9;
+            aspect-ratio: 3 / 4;
+            background-color: #f5f6fb;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             text-align: center;
             padding: 8px;
-            color: #888;
-            font-size: 14px;
-            border: 1px dashed #ccc;
-            border-radius: 2px;
+            color: #7b84a4;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 1px dashed rgba(29, 47, 99, 0.3);
         }
+
         .book-cover-placeholder svg {
             width: 40%;
             height: 40%;
-            margin-bottom: 8px;
-            fill: #aaa;
+            margin-bottom: 6px;
+            fill: var(--accent-soft);
         }
+
         .no-results {
             display: none;
             text-align: center;
-            padding: 20px;
-            font-size: 16px;
+            padding: 16px;
+            font-size: 14px;
             color: var(--text-light-color);
         }
+
         .footer {
             text-align: center;
-            padding: 20px;
+            padding: 18px 16px 20px 16px;
             font-size: 12px;
             color: var(--text-light-color);
-            border-top: 1px solid #eee;
+            border-top: 1px solid rgba(29, 47, 99, 0.1);
+            background: rgba(247, 248, 252, 0.9);
         }
 
         @media (max-width: 960px) {
             .header-content {
-                padding: 16px 20px;
+                padding: 18px 20px;
+            }
+
+            main {
+                padding: 16px 18px 20px 18px;
             }
         }
+
         @media (max-width: 640px) {
             .header-banner {
                 height: auto;
             }
+
             .header-content {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 12px;
                 padding: 16px;
             }
-            .bookshelf {
-                padding: 16px;
-            }
-            .search-bar-container {
-                padding: 16px;
-            }
+
             .book-list {
-                gap: 16px;
+                gap: 12px;
             }
         }
     </style>
 </head>
 <body>
-<div class="page">
-
-    <!-- 頁首區：所有內容（圖片、文字）應由後端程式動態替換 -->
-    <header class="header-banner">
-        <div class="header-overlay"></div>
-        <div class="header-content">
-            <div class="header-mascot">
-                <img src="images/cheerg_logo.svg" alt="Mascot" data-org-mascot>
+    <div class="page">
+        <header class="header-banner">
+            <div class="header-overlay"></div>
+            <div class="header-content">
+                <div class="header-mascot">
+                    <img src="images/cheerg_logo.svg" alt="Mascot" data-org-mascot>
+                </div>
+                <div class="header-text">
+                    <div class="gov-name" data-org-name>CheerG Info Tech Co., Ltd.</div>
+                    <!-- <div class="gov-name-en">E-Book Administration</div> -->
+                    <div class="title-main">多元書櫃任你探索</div>
+                </div>
             </div>
-            <div class="header-text">
-                <div class="gov-name" data-org-name>CheerG Info Tech Co., Ltd.</div>
-                <!--<div class="gov-name-en">Organization Name</div>-->
-                <div class="title-main">電子書櫃</div>
+        </header>
+
+        <main>
+            <div class="search-bar-container">
+                <input type="text" id="searchInput" placeholder="搜尋電子書名">
             </div>
-            <div class="header-logo">
-                <img src="images/cheerg_logo.svg" alt="Logo" data-org-logo>
-                <span>品牌標語</span>
-            </div>
-        </div>
-    </header>
 
-    <main>
-        <!-- 標題列 -->
-        <!--<div class="bookshelf-title-bar">
-            我的書櫃
-        </div>-->
-
-        <!-- 搜尋列 -->
-        <div class="search-bar-container">
-            <input type="text" id="searchInput" placeholder="搜尋書櫃內的書籍...">
-        </div>
-
-        <!-- 書櫃主體：程式將在 #bookshelf 內動態插入多個 .shelf-row 與 .book-item -->
-        <div class="bookshelf" id="bookshelf"><section class="shelf-row">
-  <h2 class="shelf-row-title">所有書籍</h2>
+            <div class="bookshelf" id="bookshelf"><section class="shelf-row">
+  <h2 class="shelf-row-title">所有電子書</h2>
   <ul class="book-list">
     <li class="book-item">
-      <a href="ebooks/115年簡章(圖片翻頁)_d612fd3c/index.html" target="_blank">
+      <a href="ebooks/115年簡章(圖片翻頁)_b936fa7c/index.html" target="_blank">
         <div class="book-cover-wrap">
-          <img class="book-cover" src="covers/d612fd3c7af849d380c449ec9407a5e0.png" alt="115年簡章(圖片翻頁)">
+          <img class="book-cover" src="covers/b936fa7cd8104cde9f62c715b731e30a.png" alt="115年簡章(圖片翻頁)">
         </div>
         <div class="book-caption">
           115年簡章(圖片翻頁)
@@ -293,9 +323,9 @@
       </a>
     </li>
     <li class="book-item">
-      <a href="ebooks/購買節能電器退還減徵貨物稅專區_c5ef31ae/index.html" target="_blank">
+      <a href="ebooks/購買節能電器退還減徵貨物稅專區_141a7caf/index.html" target="_blank">
         <div class="book-cover-wrap">
-          <img class="book-cover" src="covers/c5ef31ae1e7148d1859fe5f1d78df0bb.png" alt="購買節能電器退還減徵貨物稅專區">
+          <img class="book-cover" src="covers/141a7caf606c4fd58f6c51105a2af275.png" alt="購買節能電器退還減徵貨物稅專區">
         </div>
         <div class="book-caption">
           購買節能電器退還減徵貨物稅專區
@@ -305,42 +335,44 @@
   </ul>
 </section>
 </div>
-    </main>
+        </main>
 
-    <footer class="footer">
-        <p>&copy; 2024 <span class="gov-name" data-org-name>CheerG Info Tech Co., Ltd.</span>. All Rights Reserved.</p>
-    </footer>
+        <footer class="footer">
+            <p>&copy; <span id="currentYear"></span> <span class="gov-name" data-org-name>CheerG Info Tech Co., Ltd.</span>. All Rights Reserved.</p>
+        </footer>
+    </div>
 
-</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const bookItems = document.querySelectorAll('.book-item');
+            const noResultsMessage = document.getElementById('noResultsMessage');
+            const currentYear = document.getElementById('currentYear');
+            if (currentYear) {
+                currentYear.textContent = new Date().getFullYear();
+            }
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const bookItems = document.querySelectorAll('.book-item');
-        const noResultsMessage = document.getElementById('noResultsMessage');
+            searchInput.addEventListener('input', function () {
+                const searchTerm = this.value.toLowerCase().trim();
+                let visibleBooks = 0;
 
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            let visibleBooks = 0;
+                bookItems.forEach(function (item) {
+                    const title = item.querySelector('.book-caption').textContent.toLowerCase();
+                    if (title.includes(searchTerm)) {
+                        item.style.display = '';
+                        visibleBooks++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
 
-            bookItems.forEach(function(item) {
-                const title = item.querySelector('.book-caption').textContent.toLowerCase();
-                if (title.includes(searchTerm)) {
-                    item.style.display = '';
-                    visibleBooks++;
+                if (visibleBooks === 0) {
+                    noResultsMessage.style.display = 'block';
                 } else {
-                    item.style.display = 'none';
+                    noResultsMessage.style.display = 'none';
                 }
             });
-
-            if (visibleBooks === 0) {
-                noResultsMessage.style.display = 'block';
-            } else {
-                noResultsMessage.style.display = 'none';
-            }
         });
-    });
-</script>
-
+    </script>
 </body>
 </html>
